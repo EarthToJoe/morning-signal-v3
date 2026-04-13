@@ -105,6 +105,9 @@ export default function DashboardPage() {
                     <button onClick={() => deleteProfile(p.id, p.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#dc2626', padding: 0, marginLeft: 'auto' }}>
                       Delete
                     </button>
+                    <button onClick={() => navigate(`/profiles/${p.id}/subscribers`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#059669', padding: 0, marginLeft: 8 }}>
+                      Subscribers
+                    </button>
                   </div>
                   {expandedProfile === p.id && editions[p.id] && (
                     <div style={{ marginTop: 8 }}>

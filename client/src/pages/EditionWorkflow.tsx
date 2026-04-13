@@ -34,6 +34,15 @@ export default function EditionWorkflow() {
   const [assembling, setAssembling] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [fetchingImages, setFetchingImages] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('professional-dark');
+  const themes: Record<string, { label: string; header: string; accent: string }> = {
+    'professional-dark': { label: 'Professional Dark', header: '#0f3460', accent: '#0f3460' },
+    'clean-light': { label: 'Clean Light', header: '#2563eb', accent: '#2563eb' },
+    'bold-crimson': { label: 'Bold Crimson', header: '#991b1b', accent: '#dc2626' },
+    'modern-slate': { label: 'Modern Slate', header: '#334155', accent: '#6366f1' },
+    'warm-earth': { label: 'Warm Earth', header: '#78350f', accent: '#92400e' },
+  };
 
   useEffect(() => { pollAndLoad(); }, []);
 
@@ -208,6 +217,35 @@ export default function EditionWorkflow() {
     await loadNewsletter();
     setPhase(3);
     setAssembling(false);
+  }
+
+  async function fetchStoryImages() {
+    setFetchingImages(true);
+    try {
+      const data = await api('POST', `/editions/${correlationId}/fetch-images`);
+      setStatus(`Found ${data.fetched} images from ${data.total} stories`);
+      // Reassemble to include images in the newsletter
+      await api('POST', `/editions/${correlationId}/reassemble`, {});
+      await loadNewsletter();
+    } catch (err: any) { alert('Image fetch failed: ' + err.message); }
+    setFetchingImages(false);
+  }
+
+  async function applyTheme(themeName: string) {
+    setCurrentTheme(themeName);
+    try {
+      // Map theme name to full theme object
+      const themeMap: Record<string, any> = {
+        'professional-dark': { headerColor: '#0f3460', accentColor: '#0f3460', backgroundColor: '#f4f4f8', cardColor: '#ffffff', textColor: '#1a1a2e', footerColor: '#1a1a2e' },
+        'clean-light': { headerColor: '#2563eb', accentColor: '#2563eb', backgroundColor: '#f8fafc', cardColor: '#ffffff', textColor: '#334155', footerColor: '#1e293b' },
+        'bold-crimson': { headerColor: '#991b1b', accentColor: '#dc2626', backgroundColor: '#fef2f2', cardColor: '#ffffff', textColor: '#1f2937', footerColor: '#450a0a' },
+        'modern-slate': { headerColor: '#334155', accentColor: '#6366f1', backgroundColor: '#f1f5f9', cardColor: '#ffffff', textColor: '#1e293b', footerColor: '#0f172a' },
+        'warm-earth': { headerColor: '#78350f', accentColor: '#92400e', backgroundColor: '#fefce8', cardColor: '#ffffff', textColor: '#422006', footerColor: '#78350f' },
+      };
+      const theme = themeMap[themeName] || themeMap['professional-dark'];
+      const data = await api('POST', `/editions/${correlationId}/reassemble`, { theme });
+      setNewsletter((prev: any) => ({ ...prev, html: data.html }));
+    } catch (err: any) { alert('Theme failed: ' + err.message); }
   }
 
   const card = { background: 'white', borderRadius: 8, padding: 16, marginBottom: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' };
@@ -396,6 +434,30 @@ export default function EditionWorkflow() {
                 </label>
               ))}
               <input value={selectedSubject} onChange={e => setSelectedSubject(e.target.value)} placeholder="Or write a custom subject line..." style={{ ...input, marginTop: 4 }} />
+            </div>
+
+            {/* Theme picker */}
+            <div style={card}>
+              <h3 style={{ fontSize: 15, marginBottom: 8 }}>Theme</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                {Object.entries(themes).map(([key, t]) => (
+                  <div key={key} onClick={() => applyTheme(key)}
+                    style={{ border: `2px solid ${currentTheme === key ? '#0f3460' : '#ddd'}`, borderRadius: 8, padding: 10, cursor: 'pointer', textAlign: 'center' }}>
+                    <div style={{ height: 30, borderRadius: 4, background: `linear-gradient(135deg, ${t.header} 50%, ${t.accent} 50%)`, marginBottom: 6 }} />
+                    <span style={{ fontSize: 12 }}>{t.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Images */}
+            <div style={card}>
+              <h3 style={{ fontSize: 15, marginBottom: 8 }}>Story Images</h3>
+              <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>Pull images from source articles to make the newsletter more visual.</p>
+              <button onClick={fetchStoryImages} disabled={fetchingImages}
+                style={{ padding: '8px 16px', background: fetchingImages ? '#94a3b8' : '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: fetchingImages ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 500 }}>
+                {fetchingImages ? '🔍 Fetching images...' : '🖼️ Fetch Story Images'}
+              </button>
             </div>
 
             {/* Preview */}

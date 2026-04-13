@@ -157,15 +157,47 @@ router.post('/:correlationId/reassemble', async (req: Request, res: Response) =>
     const subjectResult = await query('SELECT selected_subject_line FROM assembled_newsletters WHERE edition_id = $1', [editionId]);
     const subjectLine = subjectResult.rows[0]?.selected_subject_line || config.defaultNewsletterName;
 
+    // Build story images map from written_sections
+    const storyImages: Record<string, string> = {};
+    for (const s of sections) {
+      if (s.image_url && s.story_candidate_id) {
+        storyImages[s.story_candidate_id] = s.image_url;
+      }
+    }
+
     const assembled = await assembler.assemble(
       writtenNewsletter, subjectLine, edition.rows[0].edition_number, edition.rows[0].edition_date,
-      req.params.correlationId, theme, edition.rows[0]?.profile_name, sectionNames, undefined, undefined, footerText
+      req.params.correlationId, theme, edition.rows[0]?.profile_name, sectionNames, undefined, storyImages, footerText
     );
 
     await query('UPDATE assembled_newsletters SET html_content = $1, plain_text_content = $2, section_metadata = $3 WHERE edition_id = $4',
       [assembled.html, assembled.plainText, JSON.stringify(assembled.sectionMetadata), editionId]);
 
     res.json({ html: assembled.html, plainText: assembled.plainText, sectionMetadata: assembled.sectionMetadata });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// POST /api/editions/:correlationId/fetch-images — Fetch og:images for story candidates from their source articles
+router.post('/:correlationId/fetch-images', async (req: Request, res: Response) => {
+  try {
+    const editionId = await getEditionId(req.params.correlationId);
+    const sectionsResult = await query(
+      `SELECT ws.id, ws.story_candidate_id, ws.image_url,
+       (SELECT a.url FROM story_candidate_articles sca JOIN articles a ON sca.article_id = a.id WHERE sca.story_candidate_id = ws.story_candidate_id LIMIT 1) as source_url
+       FROM written_sections ws WHERE ws.edition_id = $1 AND (ws.image_url IS NULL OR ws.image_url = '')`, [editionId]
+    );
+
+    const results: { sectionId: string; imageUrl: string | null }[] = [];
+    for (const row of sectionsResult.rows) {
+      if (!row.source_url) { results.push({ sectionId: row.id, imageUrl: null }); continue; }
+      const imageUrl = await urlFetcher.fetchImage(row.source_url);
+      if (imageUrl) {
+        await query('UPDATE written_sections SET image_url = $1 WHERE id = $2', [imageUrl, row.id]);
+      }
+      results.push({ sectionId: row.id, imageUrl });
+    }
+
+    res.json({ results, fetched: results.filter(r => r.imageUrl).length, total: results.length });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 

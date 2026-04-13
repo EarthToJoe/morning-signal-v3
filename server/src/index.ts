@@ -7,6 +7,7 @@ import { authMiddleware } from './middleware/auth';
 import { profilesRouter } from './routes/profiles';
 import { pipelineRouter } from './routes/pipeline';
 import { editionsRouter } from './routes/editions';
+import { subscribersRouter } from './routes/subscribers';
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/profiles', authMiddleware, profilesRouter);
 app.use('/api/pipeline', authMiddleware, pipelineRouter);
 app.use('/api/editions', authMiddleware, editionsRouter);
+app.use('/api/subscribers', authMiddleware, subscribersRouter);
 
 // In production, serve React static files
 if (config.nodeEnv === 'production') {

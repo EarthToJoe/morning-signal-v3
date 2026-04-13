@@ -226,6 +226,7 @@ export interface FetchedArticleMetadata {
   snippet: string;
   source: string;
   publishedAt?: Date;
+  imageUrl?: string;
   success: boolean;
   error?: string;
 }
