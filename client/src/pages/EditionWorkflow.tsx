@@ -35,6 +35,7 @@ export default function EditionWorkflow() {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [fetchingImages, setFetchingImages] = useState(false);
+  const [imagePreview, setImagePreview] = useState<Record<string, { url: string; sectionId: string; headline: string; approved: boolean }>>({});
   const [currentTheme, setCurrentTheme] = useState('professional-dark');
   const themes: Record<string, { label: string; header: string; accent: string }> = {
     'professional-dark': { label: 'Professional Dark', header: '#0f3460', accent: '#0f3460' },
@@ -223,12 +224,42 @@ export default function EditionWorkflow() {
     setFetchingImages(true);
     try {
       const data = await api('POST', `/editions/${correlationId}/fetch-images`);
-      setStatus(`Found ${data.fetched} images from ${data.total} stories`);
-      // Reassemble to include images in the newsletter
-      await api('POST', `/editions/${correlationId}/reassemble`, {});
-      await loadNewsletter();
+      // Build preview map from results
+      const previews: Record<string, { url: string; sectionId: string; headline: string; approved: boolean }> = {};
+      for (const r of data.results || []) {
+        if (r.imageUrl) {
+          const section = sections.find(s => s.id === r.sectionId);
+          previews[r.sectionId] = { url: r.imageUrl, sectionId: r.sectionId, headline: section?.headline || '', approved: false };
+        }
+      }
+      setImagePreview(previews);
+      setStatus(`Found ${Object.keys(previews).length} images — review and approve below`);
     } catch (err: any) { alert('Image fetch failed: ' + err.message); }
     setFetchingImages(false);
+  }
+
+  async function approveImages() {
+    // Re-assemble with only approved images
+    const approvedImages: Record<string, string> = {};
+    for (const [sectionId, img] of Object.entries(imagePreview)) {
+      if (img.approved) approvedImages[sectionId] = img.url;
+    }
+    try {
+      // Save approved image URLs to DB
+      for (const [sectionId, url] of Object.entries(approvedImages)) {
+        await api('PUT', `/editions/${correlationId}/sections/${sectionId}`, { imageUrl: url });
+      }
+      // Clear rejected images from DB
+      for (const [sectionId, img] of Object.entries(imagePreview)) {
+        if (!img.approved) {
+          await api('PUT', `/editions/${correlationId}/sections/${sectionId}`, { imageUrl: '' });
+        }
+      }
+      await api('POST', `/editions/${correlationId}/reassemble`, {});
+      await loadNewsletter();
+      setImagePreview({});
+      setStatus('Images applied to newsletter');
+    } catch (err: any) { alert('Failed: ' + err.message); }
   }
 
   async function applyTheme(themeName: string) {
@@ -453,11 +484,41 @@ export default function EditionWorkflow() {
             {/* Images */}
             <div style={card}>
               <h3 style={{ fontSize: 15, marginBottom: 8 }}>Story Images</h3>
-              <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>Pull images from source articles to make the newsletter more visual.</p>
+              <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>Pull images from source articles. Review each one before it goes into the newsletter.</p>
               <button onClick={fetchStoryImages} disabled={fetchingImages}
                 style={{ padding: '8px 16px', background: fetchingImages ? '#94a3b8' : '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: fetchingImages ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 500 }}>
                 {fetchingImages ? '🔍 Fetching images...' : '🖼️ Fetch Story Images'}
               </button>
+
+              {Object.keys(imagePreview).length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <h4 style={{ fontSize: 13, marginBottom: 8 }}>Review Images</h4>
+                  {Object.entries(imagePreview).map(([sectionId, img]) => (
+                    <div key={sectionId} style={{ display: 'flex', gap: 12, alignItems: 'start', padding: 10, background: img.approved ? '#f0fdf4' : '#fafafa', borderRadius: 8, marginBottom: 8, border: `1px solid ${img.approved ? '#bbf7d0' : '#e0e0e0'}` }}>
+                      <img src={img.url} alt={img.headline} style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{img.headline}</div>
+                        <div style={{ fontSize: 11, color: '#888', marginBottom: 6, wordBreak: 'break-all' }}>{img.url.substring(0, 80)}...</div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => setImagePreview(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], approved: true } }))}
+                            style={{ padding: '3px 10px', background: img.approved ? '#059669' : '#e0e0e0', color: img.approved ? 'white' : '#333', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                            ✓ Use
+                          </button>
+                          <button onClick={() => setImagePreview(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], approved: false } }))}
+                            style={{ padding: '3px 10px', background: !img.approved ? '#dc2626' : '#e0e0e0', color: !img.approved ? 'white' : '#333', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                            ✗ Skip
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={approveImages}
+                    style={{ padding: '8px 16px', background: '#059669', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 500, marginTop: 8 }}>
+                    Apply {Object.values(imagePreview).filter(i => i.approved).length} Approved Images
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Preview */}

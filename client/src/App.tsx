@@ -3,6 +3,7 @@ import DashboardPage from './pages/DashboardPage';
 import ProfileWizard from './pages/ProfileWizard';
 import ProfileStart from './pages/ProfileStart';
 import SubscribersPage from './pages/SubscribersPage';
+import SourcesPage from './pages/SourcesPage';
 import LoginPage from './pages/LoginPage';
 import EditionWorkflow from './pages/EditionWorkflow';
 
@@ -15,6 +16,7 @@ function App() {
         <Route path="/profiles/new" element={<ProfileWizard />} />
         <Route path="/profiles/:profileId/start" element={<ProfileStart />} />
         <Route path="/profiles/:profileId/subscribers" element={<SubscribersPage />} />
+        <Route path="/profiles/:profileId/sources" element={<SourcesPage />} />
         <Route path="/editions/:correlationId/*" element={<EditionWorkflow />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

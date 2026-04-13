@@ -108,6 +108,9 @@ export default function DashboardPage() {
                     <button onClick={() => navigate(`/profiles/${p.id}/subscribers`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#059669', padding: 0, marginLeft: 8 }}>
                       Subscribers
                     </button>
+                    <button onClick={() => navigate(`/profiles/${p.id}/sources`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#2563eb', padding: 0, marginLeft: 8 }}>
+                      Sources
+                    </button>
                   </div>
                   {expandedProfile === p.id && editions[p.id] && (
                     <div style={{ marginTop: 8 }}>

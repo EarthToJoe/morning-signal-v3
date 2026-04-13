@@ -8,6 +8,7 @@ import { profilesRouter } from './routes/profiles';
 import { pipelineRouter } from './routes/pipeline';
 import { editionsRouter } from './routes/editions';
 import { subscribersRouter } from './routes/subscribers';
+import { sourcesRouter } from './routes/sources';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/profiles', authMiddleware, profilesRouter);
 app.use('/api/pipeline', authMiddleware, pipelineRouter);
 app.use('/api/editions', authMiddleware, editionsRouter);
 app.use('/api/subscribers', authMiddleware, subscribersRouter);
+app.use('/api/sources', authMiddleware, sourcesRouter);
 
 // In production, serve React static files
 if (config.nodeEnv === 'production') {

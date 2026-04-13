@@ -86,12 +86,21 @@ router.get('/:correlationId/newsletter', async (req: Request, res: Response) => 
 // PUT /api/editions/:correlationId/sections/:sectionId — inline edit
 router.put('/:correlationId/sections/:sectionId', async (req: Request, res: Response) => {
   try {
-    const { headline, htmlContent, plainTextContent } = req.body;
-    await query(
-      `UPDATE written_sections SET headline = COALESCE($1, headline), html_content = COALESCE($2, html_content),
-       plain_text_content = COALESCE($3, plain_text_content), written_at = NOW() WHERE id = $4`,
-      [headline || null, htmlContent || null, plainTextContent || null, req.params.sectionId]
-    );
+    const { headline, htmlContent, plainTextContent, imageUrl } = req.body;
+    const updates: string[] = [];
+    const params: any[] = [];
+    let paramIdx = 1;
+
+    if (headline !== undefined) { updates.push(`headline = $${paramIdx++}`); params.push(headline); }
+    if (htmlContent !== undefined) { updates.push(`html_content = $${paramIdx++}`); params.push(htmlContent); }
+    if (plainTextContent !== undefined) { updates.push(`plain_text_content = $${paramIdx++}`); params.push(plainTextContent); }
+    if (imageUrl !== undefined) { updates.push(`image_url = $${paramIdx++}`); params.push(imageUrl || null); }
+
+    if (updates.length > 0) {
+      updates.push('written_at = NOW()');
+      params.push(req.params.sectionId);
+      await query(`UPDATE written_sections SET ${updates.join(', ')} WHERE id = $${paramIdx}`, params);
+    }
     res.json({ success: true });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
