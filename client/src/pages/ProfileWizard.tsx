@@ -11,6 +11,7 @@ export default function ProfileWizard() {
   const [audience, setAudience] = useState('');
   const [categories, setCategories] = useState<Category[]>([{ category: '', displayName: '', objective: '', searchQueries: [] }]);
   const [daysBack, setDaysBack] = useState(3);
+  const [sectionNames, setSectionNames] = useState({ lead: 'Lead Story', briefing: 'Quick Hits', watch: 'Watch List' });
   const [showForm, setShowForm] = useState(false);
   const [starting, setStarting] = useState(false);
   const [quickCreating, setQuickCreating] = useState(false);
@@ -41,6 +42,15 @@ export default function ProfileWizard() {
 
   function addCategory() { setCategories([...categories, { category: '', displayName: '', objective: '', searchQueries: [] }]); }
   function removeCategory(idx: number) { setCategories(categories.filter((_, i) => i !== idx)); }
+
+  function buildProfileBody() {
+    return {
+      name: name.trim(), audience: audience.trim(), sectionNames,
+      categories: categories.filter(c => c.displayName.trim()).map(c => ({
+        ...c, searchQueries: typeof c.searchQueries === 'string' ? (c.searchQueries as any).split('\n').filter(Boolean) : c.searchQueries,
+      })),
+    };
+  }
 
   async function quickCreateFromWizard() {
     if (!name.trim()) { alert('Enter a newsletter name'); return; }
@@ -130,6 +140,22 @@ export default function ProfileWizard() {
                 <option value={1}>24 hours</option><option value={2}>2 days</option><option value={3}>3 days</option>
                 <option value={5}>5 days</option><option value={7}>1 week</option><option value={14}>2 weeks</option>
               </select>
+            </div>
+
+            <h4 style={{ marginBottom: 8, fontSize: 14 }}>Section Names <span style={{ color: '#aaa', fontWeight: 'normal', fontSize: 12 }}>(customize how sections are labeled)</span></h4>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, color: '#888' }}>Lead section</label>
+                <input value={sectionNames.lead} onChange={e => setSectionNames({ ...sectionNames, lead: e.target.value })} style={inputStyle} placeholder="Lead Story" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, color: '#888' }}>Briefing section</label>
+                <input value={sectionNames.briefing} onChange={e => setSectionNames({ ...sectionNames, briefing: e.target.value })} style={inputStyle} placeholder="Quick Hits" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, color: '#888' }}>Watch section</label>
+                <input value={sectionNames.watch} onChange={e => setSectionNames({ ...sectionNames, watch: e.target.value })} style={inputStyle} placeholder="Watch List" />
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 12 }}>

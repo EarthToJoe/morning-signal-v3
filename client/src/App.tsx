@@ -3,12 +3,14 @@ import DashboardPage from './pages/DashboardPage';
 import ProfileWizard from './pages/ProfileWizard';
 import ProfileStart from './pages/ProfileStart';
 import SubscribersPage from './pages/SubscribersPage';
+import LoginPage from './pages/LoginPage';
 import EditionWorkflow from './pages/EditionWorkflow';
 
-export default function App() {
+function App() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f7', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
       <Routes>
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/profiles/new" element={<ProfileWizard />} />
         <Route path="/profiles/:profileId/start" element={<ProfileStart />} />

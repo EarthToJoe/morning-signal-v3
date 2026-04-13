@@ -65,3 +65,43 @@ Each of these consumes API credits and should be metered:
 - [ ] Prompt management UI
 - [ ] Authentication (login/register)
 - [ ] Per-story quick generation from Phase 1
+
+
+---
+
+## New Feature Requests (April 12, 2026)
+
+### Image Preview & Control
+- User must see the fetched image before it goes into the newsletter
+- Option to reject an image and try another source article's image
+- Option to remove an image entirely
+- Future: DALL-E fallback if no good source image exists
+- This is Phase 3 functionality — images should appear as cards the user can approve/reject
+
+### Subscriber Discovery (Public-Facing)
+This is a new product surface — not just the publisher dashboard, but a reader-facing experience:
+- **Newsletter search/browse** — readers can find newsletters by topic
+- **Tags/categories** — publishers tag their newsletters (e.g., "Defense", "Tech", "Finance", "Sports")
+- **Newsletter public page** — shows name, description, publisher name/username, frequency, sample edition
+- **Subscribe button** — reader enters email to subscribe
+- **Publisher profile** — username, bio, list of their newsletters
+- **Frequency/periodicity** — publisher sets how often they send (daily, weekly, biweekly, monthly) — visible to subscribers
+
+### Database Changes Needed
+- `newsletter_profiles` needs: `tags TEXT[]`, `frequency TEXT`, `is_public BOOLEAN`, `description TEXT`
+- New `users` table (or Supabase Auth) needs: `username TEXT`, `display_name TEXT`, `bio TEXT`
+- Public API endpoints (no auth required) for browsing/searching newsletters
+
+### Priority Assessment
+- Image preview/control: Medium — improves quality, can build now
+- Newsletter discovery: Large — this is a whole new product surface (reader-facing). Should be planned carefully.
+- Tags/frequency/publisher info: Medium — database + profile form additions
+- Public pages: Large — needs a separate public-facing UI, SEO considerations
+
+### Recommendation
+Build image preview/control now (it's Phase 3 polish).
+Add tags/frequency/publisher info to the profile form now (small additions).
+Defer the full public discovery/browse experience to a later phase — it's essentially building a second product (the reader experience) on top of the publisher experience.
+
+### Dashboard Issue
+User reports not seeing new features on the dashboard. This may be a browser cache issue — hard refresh (Cmd+Shift+R) should fix it. Or the Vite dev server may need restarting.
