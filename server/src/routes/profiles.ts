@@ -38,16 +38,6 @@ const PRESETS = [
     ],
   },
   {
-    name: 'Bloomberg Prep Brief',
-    audience: 'Someone preparing for a Contracts Coordinator role at Bloomberg — needs to understand Bloomberg Terminal licensing, enterprise data services, financial industry contract management, and current market/business news',
-    categories: [
-      { category: 'bloomberg', displayName: 'Bloomberg & Terminal News', objective: 'Bloomberg LP company news, Bloomberg Terminal product updates, new Bloomberg data services, Bloomberg enterprise licensing changes, and Bloomberg business developments.', searchQueries: ['Bloomberg Terminal news', 'Bloomberg LP updates', 'Bloomberg data services'] },
-      { category: 'licensing', displayName: 'Financial Data & Enterprise Licensing', objective: 'Enterprise software licensing trends, financial data vendor contracts, SaaS contract management, data terminal market competition (Bloomberg vs Refinitiv vs FactSet), and enterprise procurement in financial services.', searchQueries: ['financial data licensing', 'Bloomberg vs Refinitiv FactSet', 'enterprise software contracts financial services'] },
-      { category: 'contracts', displayName: 'Contract Management & Operations', objective: 'Contract lifecycle management best practices, contract coordination workflows, legal operations in financial services, compliance in contract processing, and digital contract signing trends.', searchQueries: ['contract lifecycle management', 'legal operations financial services', 'digital contract signing'] },
-      { category: 'markets', displayName: 'Markets & Business News', objective: 'Major financial market developments, Wall Street business news, banking industry updates, and economic policy changes that affect financial services companies.', searchQueries: ['financial markets news', 'Wall Street business', 'banking industry updates'] },
-    ],
-  },
-  {
     name: 'NR Insider',
     audience: 'Naval Reactors (NAVSEA 08) employees, engineers, and program staff — people working across NR headquarters, Bettis and KNOLLS labs, shipyards (Newport News, Electric Boat, Puget Sound, Pearl Harbor, Norfolk), and prototype sites (NPTU Charleston, NPTU Ballston Spa) who want to stay current on nuclear Navy developments, defense policy affecting the program, and the broader nuclear energy landscape',
     sectionNames: { lead: 'Flagship Report', briefing: 'Reactor Briefs', watch: 'On the Horizon' },
