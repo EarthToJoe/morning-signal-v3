@@ -654,6 +654,7 @@ export default function EditionWorkflow() {
             <div style={card}>
               <h3 style={{ fontSize: 15, marginBottom: 8 }}>Send Newsletter</h3>
               <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>Enter email addresses to send this newsletter to — no need to add them as subscribers. Separate multiple emails with commas.</p>
+              <p style={{ fontSize: 12, color: '#dc2626', marginBottom: 8 }}>⚠️ Heads up: emails may land in spam. Tell recipients to check their spam folder and mark it as "not spam."</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input id="quick-send-emails" placeholder="email@example.com, friend@example.com" style={{ flex: 1, padding: '10px 14px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' as const }} />
                 <button onClick={async () => {
@@ -663,7 +664,7 @@ export default function EditionWorkflow() {
                   if (!confirm(`Send to ${emails.length} email(s)?`)) return;
                   try {
                     const data = await api('POST', `/editions/${correlationId}/quick-send`, { emails, subjectLine: selectedSubject });
-                    alert(`Sent to ${data.sent} of ${data.total} email(s).${data.failed > 0 ? ` ${data.failed} failed.` : ''}`);
+                    alert(`Sent to ${data.sent} of ${data.total} email(s).${data.failed > 0 ? ` ${data.failed} failed.` : ''}\n\nRemind recipients to check their spam folder!`);
                   } catch (err: any) { alert('Send failed: ' + err.message); }
                 }} style={{ ...btn('#2e7d32'), padding: '10px 20px' }}>✉️ Send</button>
               </div>
