@@ -92,12 +92,34 @@ OUTPUT FORMAT (strict JSON):
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_completion_tokens: 500,
+      max_completion_tokens: 1200,
     });
 
     const inputTokens = response.usage?.prompt_tokens || 0;
     const outputTokens = response.usage?.completion_tokens || 0;
-    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+    const rawContent = response.choices[0]?.message?.content || '{}';
+    
+    // Defensive JSON parsing — handle truncated responses
+    let parsed;
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch {
+      // Try to fix truncated JSON by closing open structures
+      let fixed = rawContent;
+      if (!fixed.endsWith('}')) {
+        // Find last complete object/array and close it
+        const lastBrace = fixed.lastIndexOf('}');
+        const lastBracket = fixed.lastIndexOf(']');
+        if (lastBracket > lastBrace) fixed = fixed.substring(0, lastBracket + 1) + '}';
+        else if (lastBrace > 0) fixed = fixed.substring(0, lastBrace + 1);
+        // Try to close any open arrays/objects
+        const openBrackets = (fixed.match(/\[/g) || []).length - (fixed.match(/\]/g) || []).length;
+        const openBraces = (fixed.match(/\{/g) || []).length - (fixed.match(/\}/g) || []).length;
+        for (let i = 0; i < openBrackets; i++) fixed += ']';
+        for (let i = 0; i < openBraces; i++) fixed += '}';
+      }
+      try { parsed = JSON.parse(fixed); } catch { parsed = {}; }
+    }
 
     res.json({ ...parsed, cost: { inputTokens, outputTokens, estimatedCost: (inputTokens * 0.00001 + outputTokens * 0.00003).toFixed(4) } });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
