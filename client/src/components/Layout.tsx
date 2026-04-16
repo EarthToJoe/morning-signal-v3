@@ -9,7 +9,7 @@ interface Edition {
   correlation_id: string; status: string; edition_number: number; started_at: string; lead_headline?: string;
 }
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children, guest }: { children: React.ReactNode; guest?: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -71,8 +71,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* User info */}
         {!collapsed && (
           <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{userInfo.displayName || 'Loading...'}</div>
-            <div style={{ fontSize: 11, color: '#6b7a90' }}>{userInfo.email}</div>
+            {guest ? (
+              <>
+                <div style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>Guest Mode</div>
+                <div style={{ fontSize: 11, color: '#6b7a90' }}>
+                  <a href="/login" style={{ color: '#6b9aeb' }}>Sign in</a> to save your work
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{userInfo.displayName || 'Loading...'}</div>
+                <div style={{ fontSize: 11, color: '#6b7a90' }}>{userInfo.email}</div>
+              </>
+            )}
           </div>
         )}
 

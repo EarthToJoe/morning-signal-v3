@@ -39,6 +39,13 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       req.userEmail = 'dev@localhost';
       return next();
     }
+    // Guest mode: assign a guest ID from a header or generate one
+    const guestId = req.headers['x-guest-id'] as string;
+    if (guestId) {
+      req.userId = `guest-${guestId}`;
+      req.userEmail = 'guest@anonymous';
+      return next();
+    }
     return res.status(401).json({ error: 'Missing or invalid authorization header' });
   }
 

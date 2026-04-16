@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api';
+import { api, markGuestTrialUsed } from '../api';
 
 interface Category { category: string; displayName: string; objective: string; searchQueries: string[]; }
 interface Preset { name: string; audience: string; categories: Category[]; sectionNames?: { lead: string; briefing: string; watch: string }; }
 
-export default function ProfileWizard() {
+export default function ProfileWizard({ guest, onCreated }: { guest?: boolean; onCreated?: () => void } = {}) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [name, setName] = useState('');
   const [audience, setAudience] = useState('');
@@ -82,6 +82,7 @@ export default function ProfileWizard() {
         })),
       });
       const result = await api('POST', '/pipeline/start', { profileId: profile.id, daysBack });
+      if (guest) markGuestTrialUsed();
       navigate(`/editions/${result.correlationId}/phase1`);
     } catch (err: any) { alert('Error: ' + err.message); setStarting(false); }
   }

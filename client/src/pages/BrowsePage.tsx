@@ -44,8 +44,16 @@ export default function BrowsePage() {
       <div style={{ background: '#0f1a2e', color: 'white', padding: '32px 24px', textAlign: 'center' }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Morning Signal</h1>
         <p style={{ fontSize: 15, color: '#a0aec0', marginBottom: 16 }}>AI-powered newsletters on any topic. Subscribe to the ones you care about.</p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 16 }}>
+          <a href="/try" style={{ padding: '12px 24px', background: '#059669', color: 'white', borderRadius: 8, textDecoration: 'none', fontSize: 15, fontWeight: 600 }}>
+            ✨ Try It — Create a Newsletter
+          </a>
+          <a href="/login" style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.15)', color: 'white', borderRadius: 8, textDecoration: 'none', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center' }}>
+            Sign In
+          </a>
+        </div>
         <div style={{ maxWidth: 400, margin: '0 auto', display: 'flex', gap: 8 }}>
-          <input value={subscribeEmail} onChange={e => setSubscribeEmail(e.target.value)} placeholder="Your email address"
+          <input value={subscribeEmail} onChange={e => setSubscribeEmail(e.target.value)} placeholder="Your email to subscribe"
             style={{ flex: 1, padding: '10px 14px', border: 'none', borderRadius: 8, fontSize: 14 }} />
           <a href="/login" style={{ padding: '10px 16px', background: '#2563eb', color: 'white', borderRadius: 8, textDecoration: 'none', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center' }}>
             Sign In

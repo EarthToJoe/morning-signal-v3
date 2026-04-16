@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { getSession, isDevMode } from './auth';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { getSession } from './auth';
+import { hasUsedGuestTrial } from './api';
 import Layout from './components/Layout';
 import DashboardPage from './pages/DashboardPage';
 import ProfileWizard from './pages/ProfileWizard';
@@ -29,6 +30,18 @@ export default function App() {
         <Route path="/login" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <LoginPage onLogin={() => setIsLoggedIn(true)} />} />
         <Route path="/browse" element={<BrowsePage />} />
         <Route path="/" element={<BrowsePage />} />
+        {/* Guest trial: allow one newsletter creation without login */}
+        <Route path="/try" element={
+          hasUsedGuestTrial() ? <Navigate to="/login" replace /> :
+          <Layout guest>
+            <ProfileWizard guest onCreated={() => {}} />
+          </Layout>
+        } />
+        <Route path="/editions/:correlationId/*" element={
+          <Layout guest={!isLoggedIn}>
+            <EditionWorkflow />
+          </Layout>
+        } />
         <Route path="*" element={isLoggedIn ? (
           <Layout>
             <Routes>
@@ -38,7 +51,6 @@ export default function App() {
               <Route path="/profiles/:profileId/edit" element={<ProfileEdit />} />
               <Route path="/profiles/:profileId/subscribers" element={<SubscribersPage />} />
               <Route path="/profiles/:profileId/sources" element={<SourcesPage />} />
-              <Route path="/editions/:correlationId/*" element={<EditionWorkflow />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
