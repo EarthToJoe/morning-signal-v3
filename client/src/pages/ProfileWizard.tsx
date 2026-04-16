@@ -15,6 +15,7 @@ export default function ProfileWizard({ guest, onCreated }: { guest?: boolean; o
   const [showForm, setShowForm] = useState(false);
   const [starting, setStarting] = useState(false);
   const [quickCreating, setQuickCreating] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -44,6 +45,35 @@ export default function ProfileWizard({ guest, onCreated }: { guest?: boolean; o
 
   function addCategory() { setCategories([...categories, { category: '', displayName: '', objective: '', searchQueries: [] }]); }
   function removeCategory(idx: number) { setCategories(categories.filter((_, i) => i !== idx)); }
+
+  async function autoFill() {
+    setAutoFilling(true);
+    try {
+      // Ensure at least 4 category slots
+      let cats = [...categories];
+      while (cats.length < 4) cats.push({ category: '', displayName: '', objective: '', searchQueries: [] });
+      setCategories(cats);
+
+      const data = await api('POST', '/profiles/auto-fill', {
+        name, audience, categories: cats, sectionNames,
+      });
+
+      if (data.audience && !audience) setAudience(data.audience);
+      if (data.sectionNames) setSectionNames(data.sectionNames);
+      if (data.newCategories && data.newCategories.length > 0) {
+        const updated = [...cats];
+        let fillIdx = 0;
+        for (let i = 0; i < updated.length && fillIdx < data.newCategories.length; i++) {
+          if (!updated[i].displayName?.trim()) {
+            const nc = data.newCategories[fillIdx++];
+            updated[i] = { category: nc.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '_'), displayName: nc.displayName, objective: nc.objective || '', searchQueries: nc.searchQueries || [] };
+          }
+        }
+        setCategories(updated);
+      }
+    } catch (err: any) { alert('Auto-fill failed: ' + err.message); }
+    setAutoFilling(false);
+  }
 
   function buildProfileBody() {
     return {
@@ -121,6 +151,11 @@ export default function ProfileWizard({ guest, onCreated }: { guest?: boolean; o
             <div style={{ marginBottom: 16 }}>
               <input value={audience} onChange={e => setAudience(e.target.value)} placeholder="Who reads this? (e.g. Startup founders interested in AI)" style={inputStyle} />
             </div>
+
+            <button onClick={autoFill} disabled={autoFilling}
+              style={{ padding: '8px 16px', background: autoFilling ? '#94a3b8' : '#7c3aed', color: 'white', border: 'none', borderRadius: 8, cursor: autoFilling ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 500, marginBottom: 16 }}>
+              {autoFilling ? '✨ Generating ideas...' : '✨ Auto-fill with AI'}
+            </button>
 
             <h4 style={{ marginBottom: 8 }}>Topic Categories</h4>
             {categories.map((cat, i) => (

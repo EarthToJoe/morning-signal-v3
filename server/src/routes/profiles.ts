@@ -52,6 +52,57 @@ const PRESETS = [
 
 router.get('/presets', (_req: Request, res: Response) => { res.json({ presets: PRESETS }); });
 
+// POST /api/profiles/auto-fill — AI fills in missing newsletter setup fields
+router.post('/auto-fill', async (req: Request, res: Response) => {
+  try {
+    const { name, audience, categories, sectionNames } = req.body;
+    const filledCategories = (categories || []).filter((c: any) => c.displayName?.trim());
+    const emptySlots = Math.max(4, (categories || []).length) - filledCategories.length;
+
+    const context = [
+      name ? `Newsletter name: "${name}"` : '',
+      audience ? `Audience: "${audience}"` : '',
+      filledCategories.length > 0 ? `Existing categories: ${filledCategories.map((c: any) => `"${c.displayName}"${c.objective ? ` (${c.objective})` : ''}`).join(', ')}` : '',
+    ].filter(Boolean).join('\n');
+
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey: (await import('../config')).config.openaiApiKey });
+
+    const prompt = `You are helping someone set up an AI-powered newsletter. Based on what they've provided so far, fill in the missing fields.
+
+${context || 'The user has not provided anything yet. Suggest a general news newsletter.'}
+
+Generate the following as JSON:
+${!audience ? '- "audience": a 1-2 sentence description of who reads this newsletter' : ''}
+${emptySlots > 0 ? `- "newCategories": an array of ${emptySlots} NEW category objects (don't repeat existing ones), each with:
+  - "displayName": short category name (2-4 words)
+  - "objective": 1-2 sentence description of what to search for in this category
+  - "searchQueries": array of 3-4 search query strings` : ''}
+${!sectionNames || (!sectionNames.lead || sectionNames.lead === 'Lead Story') ? '- "sectionNames": { "lead": "custom lead section name", "briefing": "custom briefing section name", "watch": "custom watch section name" } themed to match the newsletter' : ''}
+
+OUTPUT FORMAT (strict JSON):
+{
+  ${!audience ? '"audience": "string",' : ''}
+  "newCategories": [{ "displayName": "string", "objective": "string", "searchQueries": ["string"] }],
+  "sectionNames": { "lead": "string", "briefing": "string", "watch": "string" }
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-5.4',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+      max_completion_tokens: 500,
+    });
+
+    const inputTokens = response.usage?.prompt_tokens || 0;
+    const outputTokens = response.usage?.completion_tokens || 0;
+    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+
+    res.json({ ...parsed, cost: { inputTokens, outputTokens, estimatedCost: (inputTokens * 0.00001 + outputTokens * 0.00003).toFixed(4) } });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 // GET /api/profiles — list user's profiles
 router.get('/', async (req: Request, res: Response) => {
   try {
