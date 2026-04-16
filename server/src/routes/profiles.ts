@@ -50,6 +50,7 @@ const PRESETS = [
   {
     name: 'NR Insider',
     audience: 'Naval Reactors (NAVSEA 08) employees, engineers, and program staff — people working across NR headquarters, Bettis and KNOLLS labs, shipyards (Newport News, Electric Boat, Puget Sound, Pearl Harbor, Norfolk), and prototype sites (NPTU Charleston, NPTU Ballston Spa) who want to stay current on nuclear Navy developments, defense policy affecting the program, and the broader nuclear energy landscape',
+    sectionNames: { lead: 'Flagship Report', briefing: 'Reactor Briefs', watch: 'On the Horizon' },
     categories: [
       { category: 'nuclear_navy', displayName: 'Nuclear Navy & Submarine Force', objective: 'U.S. Navy nuclear-powered submarine and aircraft carrier news including Columbia-class and Virginia-class submarine programs, CVN-78 Ford-class carriers, submarine fleet readiness, AUKUS submarine deal, naval nuclear propulsion milestones, and Navy shipbuilding budget.', searchQueries: ['Navy submarine program', 'Columbia class submarine', 'Virginia class submarine', 'nuclear aircraft carrier Navy'] },
       { category: 'shipbuilding', displayName: 'Shipyards & Industrial Base', objective: 'Naval shipbuilding industry news including Huntington Ingalls Newport News Shipbuilding, General Dynamics Electric Boat, Puget Sound Naval Shipyard, submarine maintenance backlogs, shipyard workforce challenges, and defense industrial base investments.', searchQueries: ['naval shipbuilding industry', 'Huntington Ingalls Newport News', 'Electric Boat submarine', 'shipyard workforce defense'] },

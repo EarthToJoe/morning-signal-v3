@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 
 interface Category { category: string; displayName: string; objective: string; searchQueries: string[]; }
-interface Preset { name: string; audience: string; categories: Category[]; }
+interface Preset { name: string; audience: string; categories: Category[]; sectionNames?: { lead: string; briefing: string; watch: string }; }
 
 export default function ProfileWizard() {
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -24,6 +24,8 @@ export default function ProfileWizard() {
   function loadPreset(preset: Preset) {
     setName(preset.name); setAudience(preset.audience);
     setCategories(preset.categories.map(c => ({ ...c })));
+    if (preset.sectionNames) setSectionNames(preset.sectionNames);
+    else setSectionNames({ lead: 'Lead Story', briefing: 'Quick Hits', watch: 'Watch List' });
     setShowForm(true);
   }
 
