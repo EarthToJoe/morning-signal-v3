@@ -21,6 +21,8 @@
 
 ## Key Rules for New Contexts
 - **SendGrid sender verified:** `morningsignal4@gmail.com` is verified and ready to send. API key is configured in server `.env`.
+- **DEPLOYED:** App is live at `https://server-production-fe2e.up.railway.app`. Railway auto-deploys on git push. Custom domain `www.hughesnode.com` pending DNS propagation.
+- **Database pooler:** Railway uses `aws-1-us-east-2.pooler.supabase.com` as DB_HOST and `postgres.wmsopxfruqiutydogxcd` as DB_USER (session pooler for IPv4 compatibility).
 - V2 must remain untouched — it's a frozen reference baseline
 - The AI pipeline is the core product — build around it, don't replace it
 - V2 prompts are tuned IP — extend with template variables, don't rewrite
