@@ -47,6 +47,16 @@ const PRESETS = [
       { category: 'markets', displayName: 'Markets & Business News', objective: 'Major financial market developments, Wall Street business news, banking industry updates, and economic policy changes that affect financial services companies.', searchQueries: ['financial markets news', 'Wall Street business', 'banking industry updates'] },
     ],
   },
+  {
+    name: 'NR Insider',
+    audience: 'Naval Reactors (NAVSEA 08) employees, engineers, and program staff — people working across NR headquarters, Bettis and KNOLLS labs, shipyards (Newport News, Electric Boat, Puget Sound, Pearl Harbor, Norfolk), and prototype sites (NPTU Charleston, NPTU Ballston Spa) who want to stay current on nuclear Navy developments, defense policy affecting the program, and the broader nuclear energy landscape',
+    categories: [
+      { category: 'nuclear_navy', displayName: 'Nuclear Navy & Submarine Force', objective: 'U.S. Navy nuclear-powered submarine and aircraft carrier news including Columbia-class and Virginia-class submarine programs, CVN-78 Ford-class carriers, submarine fleet readiness, AUKUS submarine deal, naval nuclear propulsion milestones, and Navy shipbuilding budget.', searchQueries: ['Navy submarine program', 'Columbia class submarine', 'Virginia class submarine', 'nuclear aircraft carrier Navy'] },
+      { category: 'shipbuilding', displayName: 'Shipyards & Industrial Base', objective: 'Naval shipbuilding industry news including Huntington Ingalls Newport News Shipbuilding, General Dynamics Electric Boat, Puget Sound Naval Shipyard, submarine maintenance backlogs, shipyard workforce challenges, and defense industrial base investments.', searchQueries: ['naval shipbuilding industry', 'Huntington Ingalls Newport News', 'Electric Boat submarine', 'shipyard workforce defense'] },
+      { category: 'nuclear_tech', displayName: 'Nuclear Technology & Energy', objective: 'Nuclear energy and technology developments relevant to naval reactors professionals — advanced reactor designs, small modular reactors (SMR), nuclear fuel developments, DOE nuclear programs, Bettis and KNOLLS lab research, nuclear safety and regulation, and commercial nuclear power trends.', searchQueries: ['nuclear reactor technology', 'small modular reactor SMR', 'DOE nuclear energy program', 'nuclear fuel technology'] },
+      { category: 'defense_policy', displayName: 'Defense Policy & Budget', objective: 'Defense policy and budget decisions affecting Naval Reactors and the nuclear Navy — NDAA provisions, Navy budget requests, NAVSEA policy changes, Pentagon acquisition reform, defense workforce policy, and congressional oversight of Navy programs.', searchQueries: ['Navy budget defense spending', 'NDAA naval provisions', 'Pentagon acquisition policy', 'defense workforce policy'] },
+    ],
+  },
 ];
 
 router.get('/presets', (_req: Request, res: Response) => { res.json({ presets: PRESETS }); });
