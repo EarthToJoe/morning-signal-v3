@@ -36,7 +36,7 @@ export default function BrowsePage() {
       {/* Banner */}
       <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '12px 24px', textAlign: 'center' }}>
         <p style={{ fontSize: 14, color: '#92400e', margin: 0, lineHeight: 1.5 }}>
-          🚧 This is Joe's side project — each newsletter costs ~$0.25 in API fees out of his pocket. Be cool, have fun, and send feedback to <a href="mailto:joehughes92@gmail.com" style={{ color: '#92400e', fontWeight: 600 }}>joehughes92@gmail.com</a>
+          🚧 This is Joe's side project — each newsletter costs ~$0.25 in API fees out of his pocket. Be cool, have fun, and send feedback to <a href="mailto:morningsignal4@gmail.com" style={{ color: '#92400e', fontWeight: 600 }}>morningsignal4@gmail.com</a>
         </p>
       </div>
 
@@ -89,7 +89,7 @@ export default function BrowsePage() {
         <div style={{ marginTop: 40, padding: 20, background: '#f0f0f5', borderRadius: 12, textAlign: 'center' }}>
           <p style={{ fontSize: 12, color: '#888', lineHeight: 1.6 }}>
             Disclaimer: Each newsletter created is about 25 cents out of Joe's pocket. Don't pay him back but give him some feedback to make this better!
-            <br />Email: <a href="mailto:joehughes92@gmail.com" style={{ color: '#2563eb' }}>joehughes92@gmail.com</a>
+            <br />Email: <a href="mailto:morningsignal4@gmail.com" style={{ color: '#2563eb' }}>morningsignal4@gmail.com</a>
           </p>
           <p style={{ fontSize: 11, color: '#aaa', marginTop: 8 }}>Powered by GPT-5.4 · Parallel AI · Morning Signal v3.0</p>
         </div>

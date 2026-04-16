@@ -650,6 +650,25 @@ export default function EditionWorkflow() {
                 style={{ width: previewMode === 'mobile' ? 375 : '100%', height: 700, border: '1px solid #e0e0e0', borderRadius: 8, margin: '0 auto', display: 'block' }} />
             </div>
 
+            {/* Quick Send */}
+            <div style={card}>
+              <h3 style={{ fontSize: 15, marginBottom: 8 }}>Send Newsletter</h3>
+              <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>Enter email addresses to send this newsletter to — no need to add them as subscribers. Separate multiple emails with commas.</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input id="quick-send-emails" placeholder="email@example.com, friend@example.com" style={{ flex: 1, padding: '10px 14px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' as const }} />
+                <button onClick={async () => {
+                  const input = (document.getElementById('quick-send-emails') as HTMLInputElement)?.value || '';
+                  const emails = input.split(',').map(e => e.trim()).filter(e => e.includes('@'));
+                  if (emails.length === 0) { alert('Enter at least one email address'); return; }
+                  if (!confirm(`Send to ${emails.length} email(s)?`)) return;
+                  try {
+                    const data = await api('POST', `/editions/${correlationId}/quick-send`, { emails, subjectLine: selectedSubject });
+                    alert(`Sent to ${data.sent} of ${data.total} email(s).${data.failed > 0 ? ` ${data.failed} failed.` : ''}`);
+                  } catch (err: any) { alert('Send failed: ' + err.message); }
+                }} style={{ ...btn('#2e7d32'), padding: '10px 20px' }}>✉️ Send</button>
+              </div>
+            </div>
+
             {/* Actions */}
             <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' as const }}>
               <button onClick={() => {
@@ -669,7 +688,7 @@ export default function EditionWorkflow() {
                     alert('Newsletter sent.');
                   }
                 } catch (err: any) { alert('Send failed: ' + err.message); }
-              }} style={btn('#2e7d32')}>✉️ Send Email</button>
+              }} style={btn('#2e7d32')}>✉️ Send to Subscribers</button>
               <button onClick={() => setPhase(2)} style={btn('#94a3b8')}>← Back to Editing</button>
               <button onClick={() => navigate('/dashboard')} style={btn('#94a3b8')}>Dashboard</button>
             </div>

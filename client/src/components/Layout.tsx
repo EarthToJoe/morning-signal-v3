@@ -130,7 +130,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div style={{ fontSize: 10, color: '#4a5568', lineHeight: 1.5, marginBottom: 6 }}>
               Disclaimer: Each newsletter created is about 25 cents out of Joe's pocket. Don't pay him back but give him some feedback to make this better!
-              <br /><a href="mailto:joehughes92@gmail.com" style={{ color: '#6b7a90' }}>joehughes92@gmail.com</a>
+              <br /><a href="mailto:morningsignal4@gmail.com" style={{ color: '#6b7a90' }}>morningsignal4@gmail.com</a>
             </div>
             <div style={{ fontSize: 10, color: '#4a5568' }}>Powered by GPT-5.4 · Parallel AI</div>
             <div style={{ marginTop: 4 }}>v3.0 · hughesnode.com</div>

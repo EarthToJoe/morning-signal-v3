@@ -353,6 +353,38 @@ router.get('/profile/:profileId/list', async (req: Request, res: Response) => {
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+// POST /api/editions/:correlationId/quick-send — send to arbitrary emails (no subscriber list needed)
+router.post('/:correlationId/quick-send', async (req: Request, res: Response) => {
+  try {
+    const { emails, subjectLine } = req.body;
+    if (!emails || !Array.isArray(emails) || emails.length === 0) return res.status(400).json({ error: 'emails array required' });
+
+    const editionId = await getEditionId(req.params.correlationId);
+    const newsletterResult = await query('SELECT * FROM assembled_newsletters WHERE edition_id = $1', [editionId]);
+    if (newsletterResult.rows.length === 0) return res.status(400).json({ error: 'Newsletter not yet assembled' });
+
+    const nl = newsletterResult.rows[0];
+    const subject = subjectLine || nl.selected_subject_line || 'Newsletter';
+
+    const sgMail = (await import('@sendgrid/mail')).default;
+    sgMail.setApiKey(config.sendGridApiKey);
+
+    let sent = 0;
+    let failed = 0;
+    for (const email of emails) {
+      try {
+        await sgMail.send({
+          to: email.trim(), from: { email: config.sendGridFromEmail, name: config.sendGridFromName },
+          subject, html: nl.html_content, text: nl.plain_text_content || '',
+        });
+        sent++;
+      } catch { failed++; }
+    }
+
+    res.json({ sent, failed, total: emails.length });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 // POST /api/editions/:correlationId/send — send newsletter to subscribers
 router.post('/:correlationId/send', async (req: Request, res: Response) => {
   try {

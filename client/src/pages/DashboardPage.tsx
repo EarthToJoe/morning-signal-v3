@@ -56,7 +56,7 @@ export default function DashboardPage() {
     <div>
       <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '10px 24px', textAlign: 'center' }}>
         <p style={{ fontSize: 13, color: '#92400e', margin: 0 }}>
-          🚧 Each newsletter costs ~$0.25 in API fees. Be cool, have fun, send feedback → <a href="mailto:joehughes92@gmail.com" style={{ color: '#92400e', fontWeight: 600 }}>joehughes92@gmail.com</a>
+          🚧 Each newsletter costs ~$0.25 in API fees. Be cool, have fun, send feedback → <a href="mailto:morningsignal4@gmail.com" style={{ color: '#92400e', fontWeight: 600 }}>morningsignal4@gmail.com</a>
         </p>
       </div>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
