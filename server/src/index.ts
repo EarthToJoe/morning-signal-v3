@@ -43,6 +43,6 @@ if (config.nodeEnv === 'production') {
   });
 }
 
-app.listen(config.port, () => {
+app.listen(config.port, '0.0.0.0', () => {
   logger.info('Server started', { component: 'server', port: config.port, env: config.nodeEnv });
 });
