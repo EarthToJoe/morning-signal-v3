@@ -33,6 +33,13 @@ export default function BrowsePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f7', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
+      {/* Banner */}
+      <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '12px 24px', textAlign: 'center' }}>
+        <p style={{ fontSize: 14, color: '#92400e', margin: 0, lineHeight: 1.5 }}>
+          🚧 This is Joe's side project — each newsletter costs ~$0.25 in API fees out of his pocket. Be cool, have fun, and send feedback to <a href="mailto:joehughes92@gmail.com" style={{ color: '#92400e', fontWeight: 600 }}>joehughes92@gmail.com</a>
+        </p>
+      </div>
+
       {/* Header */}
       <div style={{ background: '#0f1a2e', color: 'white', padding: '32px 24px', textAlign: 'center' }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Morning Signal</h1>
