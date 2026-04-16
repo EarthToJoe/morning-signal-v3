@@ -3,7 +3,7 @@
   "version": "3.0.0",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/templates dist/templates",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "jest --runInBand",

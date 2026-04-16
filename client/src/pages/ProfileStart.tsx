@@ -44,10 +44,8 @@ export default function ProfileStart() {
 
   return (
     <div>
-      <div style={{ background: '#0f3460', color: 'white', padding: '16px 24px' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600 }}>New Edition — {profile.name}</h1>
-      </div>
       <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
+        <h2 style={{ fontSize: 22, marginBottom: 16 }}>New Edition — {profile.name}</h2>
         <div style={card}>
           <h3 style={{ marginBottom: 4 }}>{profile.name}</h3>
           <p style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>{profile.audience}</p>

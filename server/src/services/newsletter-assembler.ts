@@ -28,21 +28,25 @@ export class NewsletterAssemblerService {
     log.info('Assembling newsletter', { editionNumber, editionDate, subjectLine });
 
     const quickHitsHtml = writtenNewsletter.quickHits.map(qh => {
-      const imgHtml = storyImages?.[qh.storyCandidateId] ? `<mj-image src="${storyImages[qh.storyCandidateId]}" alt="${qh.headline}" width="560px" padding-bottom="8px" />` : '';
-      return `${imgHtml}<mj-text font-size="18px" font-weight="bold" padding-top="16px">${qh.headline}</mj-text>\n<mj-text padding-top="4px">${qh.htmlContent}</mj-text>`;
+      const imgUrl = (qh as any).imageUrl || storyImages?.[qh.storyCandidateId] || '';
+      const imgHtml = imgUrl ? `<mj-image src="${imgUrl}" alt="${qh.headline}" width="560px" padding-top="8px" padding-bottom="16px" />` : '';
+      return `<mj-text font-size="18px" font-weight="bold" padding-top="16px">${qh.headline}</mj-text>\n<mj-text padding-top="4px">${qh.htmlContent}</mj-text>\n${imgHtml}`;
     }).join('\n');
 
-    const watchListHtml = writtenNewsletter.watchList.map(wl =>
-      `<mj-text font-size="16px" font-weight="bold" padding-top="12px">${wl.headline}</mj-text>\n<mj-text padding-top="4px">${wl.htmlContent}</mj-text>`
-    ).join('\n');
+    const watchListHtml = writtenNewsletter.watchList.map(wl => {
+      const imgUrl = (wl as any).imageUrl || storyImages?.[wl.storyCandidateId] || '';
+      const imgHtml = imgUrl ? `<mj-image src="${imgUrl}" alt="${wl.headline}" width="560px" padding-top="8px" padding-bottom="16px" />` : '';
+      return `<mj-text font-size="16px" font-weight="bold" padding-top="12px">${wl.headline}</mj-text>\n<mj-text padding-top="4px">${wl.htmlContent}</mj-text>\n${imgHtml}`;
+    }).join('\n');
 
     let mjmlTemplate: string;
     try { mjmlTemplate = readFileSync(this.templatePath, 'utf-8'); }
     catch { mjmlTemplate = this.getFallbackTemplate(); }
 
-    // Lead story image
-    const leadImgHtml = storyImages?.[writtenNewsletter.leadStory.storyCandidateId]
-      ? `<mj-image src="${storyImages[writtenNewsletter.leadStory.storyCandidateId]}" alt="${writtenNewsletter.leadStory.headline}" width="560px" padding-bottom="8px" />`
+    // Lead story image — placed after the story content
+    const leadImgUrl = (writtenNewsletter.leadStory as any).imageUrl || storyImages?.[writtenNewsletter.leadStory.storyCandidateId] || '';
+    const leadImgHtml = leadImgUrl
+      ? `<mj-image src="${leadImgUrl}" alt="${writtenNewsletter.leadStory.headline}" width="560px" padding-top="8px" padding-bottom="8px" />`
       : '';
 
     const populated = mjmlTemplate
@@ -53,7 +57,8 @@ export class NewsletterAssemblerService {
       .replace(/\{\{briefingSectionName\}\}/g, sections.briefing)
       .replace(/\{\{watchSectionName\}\}/g, sections.watch)
       .replace(/\{\{leadStoryHeadline\}\}/g, writtenNewsletter.leadStory.headline)
-      .replace(/\{\{leadStoryContent\}\}/g, `${leadImgHtml}${writtenNewsletter.leadStory.htmlContent}`)
+      .replace(/\{\{leadStoryContent\}\}/g, writtenNewsletter.leadStory.htmlContent)
+      .replace(/\{\{leadStoryImage\}\}/g, leadImgHtml)
       .replace(/\{\{quickHitsContent\}\}/g, quickHitsHtml)
       .replace(/\{\{watchListContent\}\}/g, watchListHtml)
       .replace(/\{\{unsubscribeUrl\}\}/g, config.unsubscribeUrl)
@@ -106,6 +111,7 @@ export class NewsletterAssemblerService {
         <mj-text font-size="12px" color="{{accentColor}}" font-weight="bold" text-transform="uppercase">{{leadSectionName}}</mj-text>
         <mj-text font-size="20px" font-weight="bold">{{leadStoryHeadline}}</mj-text>
         <mj-text>{{leadStoryContent}}</mj-text>
+        {{leadStoryImage}}
       </mj-column></mj-section>
       <mj-section background-color="{{cardColor}}" padding="20px"><mj-column>
         <mj-text font-size="12px" color="{{accentColor}}" font-weight="bold" text-transform="uppercase">{{briefingSectionName}}</mj-text>

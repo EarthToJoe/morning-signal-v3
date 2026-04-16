@@ -12,7 +12,6 @@ interface Section {
 }
 
 const roleColor = (r: string) => r === 'lead_story' ? '#2e7d32' : r === 'quick_hit' ? '#1565c0' : '#e65100';
-const roleLabel = (r: string) => r === 'lead_story' ? 'Lead Story' : r === 'quick_hit' ? 'Quick Hit' : 'Watch List';
 
 export default function EditionWorkflow() {
   const { correlationId } = useParams<{ correlationId: string }>();
@@ -24,6 +23,8 @@ export default function EditionWorkflow() {
   const [newsletter, setNewsletter] = useState<any>(null);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [headlineEdits, setHeadlineEdits] = useState<Record<string, string>>({});
+  const [sectionNames, setSectionNames] = useState({ lead: 'Lead Story', briefing: 'Quick Hits', watch: 'Watch List' });
+  const roleLabel = (r: string) => r === 'lead_story' ? sectionNames.lead : r === 'quick_hit' ? sectionNames.briefing : sectionNames.watch;
   const [confirming, setConfirming] = useState(false);
   const [customQuery, setCustomQuery] = useState('');
   const [manualUrl, setManualUrl] = useState('');
@@ -35,8 +36,12 @@ export default function EditionWorkflow() {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [fetchingImages, setFetchingImages] = useState(false);
-  const [imagePreview, setImagePreview] = useState<Record<string, { url: string; sectionId: string; headline: string; approved: boolean }>>({});
+  const [imagePreview, setImagePreview] = useState<Record<string, { selectedUrl: string; options: string[]; headline: string }>>({});
+  const [imagesFetched, setImagesFetched] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('professional-dark');
+  const [promptOverrides, setPromptOverrides] = useState<Record<string, string>>({});
+  const [showPrompt, setShowPrompt] = useState<string | null>(null);
+  const [promptTexts, setPromptTexts] = useState<Record<string, { editable: string; locked: string }>>({});
   const themes: Record<string, { label: string; header: string; accent: string }> = {
     'professional-dark': { label: 'Professional Dark', header: '#0f3460', accent: '#0f3460' },
     'clean-light': { label: 'Clean Light', header: '#2563eb', accent: '#2563eb' },
@@ -47,13 +52,39 @@ export default function EditionWorkflow() {
 
   useEffect(() => { pollAndLoad(); }, []);
 
+  async function loadPromptPreview(stage: string) {
+    if (promptTexts[stage]) { setShowPrompt(showPrompt === stage ? null : stage); return; }
+    try {
+      const data = await api('GET', `/prompts/${stage}/preview`);
+      setPromptTexts(prev => ({ ...prev, [stage]: { editable: data.editablePart, locked: data.lockedPart } }));
+      setShowPrompt(stage);
+    } catch { setShowPrompt(stage); }
+  }
+
   async function pollAndLoad() {
     setStatus('Waiting for pipeline...');
+    // Load section names from the edition's profile
     try {
       const s = await api('GET', `/pipeline/${correlationId}/status`);
+      if (s.sectionNames) setSectionNames(sn => ({ ...sn, ...s.sectionNames }));
       setStatus(s.currentStage);
       if (s.currentStage === 'awaiting_selection') { await loadCandidates(); setPhase(1); return; }
-      if (s.currentStage === 'awaiting_review') { await loadSections(); setPhase(2); return; }
+      if (s.currentStage === 'awaiting_review') {
+        await loadSections();
+        // If newsletter is already assembled, go straight to Phase 3
+        try {
+          const nl = await api('GET', `/editions/${correlationId}/newsletter`);
+          if (nl.html) { setNewsletter(nl); if (nl.selectedSubjectLine) setSelectedSubject(nl.selectedSubjectLine); setPhase(3); startBackgroundImageFetch(); return; }
+        } catch {}
+        setPhase(2); return;
+      }
+      if (s.currentStage === 'delivered' || s.currentStage === 'approved') {
+        try {
+          const nl = await api('GET', `/editions/${correlationId}/newsletter`);
+          if (nl.html) { setNewsletter(nl); if (nl.selectedSubjectLine) setSelectedSubject(nl.selectedSubjectLine); setPhase(3); startBackgroundImageFetch(); return; }
+        } catch {}
+        await loadSections(); setPhase(2); return;
+      }
     } catch {}
     for (let i = 0; i < 120; i++) {
       await new Promise(r => setTimeout(r, 2000));
@@ -89,6 +120,8 @@ export default function EditionWorkflow() {
     setNewsletter(data);
     if (data.selectedSubjectLine) setSelectedSubject(data.selectedSubjectLine);
     setStatus('Review newsletter');
+    // Start fetching images in the background
+    startBackgroundImageFetch();
   }
 
   // Phase 1 actions
@@ -150,6 +183,11 @@ export default function EditionWorkflow() {
     try {
       await api('POST', `/pipeline/${correlationId}/select`, {
         selections: { leadStory: applyEdit(lead), quickHits: quickHits.map(applyEdit), watchListItems: watchList.map(applyEdit) },
+        promptOverrides: Object.keys(promptOverrides).length > 0 ? {
+          lead: promptOverrides['story_writer_lead'] ? promptOverrides['story_writer_lead'] + '\n\n' + (promptTexts['story_writer_lead']?.locked || '') : undefined,
+          briefings: promptOverrides['story_writer_briefings'] ? promptOverrides['story_writer_briefings'] + '\n\n' + (promptTexts['story_writer_briefings']?.locked || '') : undefined,
+          watchList: promptOverrides['story_writer_watch_list'] ? promptOverrides['story_writer_watch_list'] + '\n\n' + (promptTexts['story_writer_watch_list']?.locked || '') : undefined,
+        } : undefined,
       });
       for (let i = 0; i < 120; i++) {
         await new Promise(r => setTimeout(r, 2000));
@@ -221,45 +259,65 @@ export default function EditionWorkflow() {
   }
 
   async function fetchStoryImages() {
+    if (imagesFetched && Object.keys(imagePreview).length > 0) {
+      // Already fetched — just show them
+      setShowImages(true);
+      return;
+    }
     setFetchingImages(true);
     try {
       const data = await api('POST', `/editions/${correlationId}/fetch-images`);
-      // Build preview map from results
-      const previews: Record<string, { url: string; sectionId: string; headline: string; approved: boolean }> = {};
+      const previews: Record<string, { selectedUrl: string; options: string[]; headline: string }> = {};
       for (const r of data.results || []) {
-        if (r.imageUrl) {
-          const section = sections.find(s => s.id === r.sectionId);
-          previews[r.sectionId] = { url: r.imageUrl, sectionId: r.sectionId, headline: section?.headline || '', approved: false };
+        if (r.images && r.images.length > 0) {
+          previews[r.sectionId] = { selectedUrl: '', options: r.images, headline: r.headline || '' };
         }
       }
       setImagePreview(previews);
-      setStatus(`Found ${Object.keys(previews).length} images — review and approve below`);
-    } catch (err: any) { alert('Image fetch failed: ' + err.message); }
+      setImagesFetched(true);
+      setStatus(`Found ${data.totalImages} images across ${Object.keys(previews).length} stories`);
+    } catch (err: any) { setStatus('Image fetch failed'); }
     setFetchingImages(false);
   }
 
-  async function approveImages() {
-    // Re-assemble with only approved images
-    const approvedImages: Record<string, string> = {};
-    for (const [sectionId, img] of Object.entries(imagePreview)) {
-      if (img.approved) approvedImages[sectionId] = img.url;
-    }
-    try {
-      // Save approved image URLs to DB
-      for (const [sectionId, url] of Object.entries(approvedImages)) {
-        await api('PUT', `/editions/${correlationId}/sections/${sectionId}`, { imageUrl: url });
+  // Background pre-fetch when entering Phase 3
+  function startBackgroundImageFetch() {
+    if (imagesFetched || fetchingImages) return;
+    setFetchingImages(true);
+    api('POST', `/editions/${correlationId}/fetch-images`).then(data => {
+      const previews: Record<string, { selectedUrl: string; options: string[]; headline: string }> = {};
+      for (const r of data.results || []) {
+        if (r.images && r.images.length > 0) {
+          previews[r.sectionId] = { selectedUrl: '', options: r.images, headline: r.headline || '' };
+        }
       }
-      // Clear rejected images from DB
+      setImagePreview(previews);
+      setImagesFetched(true);
+      setFetchingImages(false);
+    }).catch(() => { setFetchingImages(false); });
+  }
+
+  const [applyingImages, setApplyingImages] = useState(false);
+  const [showImages, setShowImages] = useState(false);
+
+  async function approveImages() {
+    const selected = Object.entries(imagePreview).filter(([_, img]) => img.selectedUrl);
+    if (selected.length === 0) { setStatus('No images selected — click on an image to select it'); return; }
+    setApplyingImages(true);
+    setStatus(`Applying ${selected.length} image${selected.length !== 1 ? 's' : ''}...`);
+    try {
       for (const [sectionId, img] of Object.entries(imagePreview)) {
-        if (!img.approved) {
+        if (img.selectedUrl) {
+          await api('PUT', `/editions/${correlationId}/sections/${sectionId}`, { imageUrl: img.selectedUrl });
+        } else {
           await api('PUT', `/editions/${correlationId}/sections/${sectionId}`, { imageUrl: '' });
         }
       }
       await api('POST', `/editions/${correlationId}/reassemble`, {});
       await loadNewsletter();
-      setImagePreview({});
-      setStatus('Images applied to newsletter');
-    } catch (err: any) { alert('Failed: ' + err.message); }
+      setStatus(`✓ Applied ${selected.length} image${selected.length !== 1 ? 's' : ''} to newsletter — scroll down to preview`);
+    } catch (err: any) { alert('Failed to apply images: ' + err.message); setStatus('Image apply failed'); }
+    setApplyingImages(false);
   }
 
   async function applyTheme(themeName: string) {
@@ -295,11 +353,11 @@ export default function EditionWorkflow() {
 
   return (
     <div>
-      <div style={{ background: '#0f3460', color: 'white', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, cursor: 'pointer' }} onClick={() => navigate('/dashboard')}>Morning Signal</h1>
-        <span style={{ fontSize: 13, opacity: 0.8 }}>{status}</span>
-      </div>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 600 }}>Edition Workflow</h2>
+          <span style={{ fontSize: 13, color: '#888', background: '#f0f0f5', padding: '4px 12px', borderRadius: 12 }}>{status}</span>
+        </div>
         {phase > 0 && <PhaseBar />}
 
         {/* Loading state */}
@@ -373,9 +431,9 @@ export default function EditionWorkflow() {
                     <select value={selections[c.id] || ''} onChange={e => setSelections({ ...selections, [c.id]: e.target.value })}
                       style={{ padding: '4px 8px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13 }}>
                       <option value="">— Skip —</option>
-                      <option value="lead_story">Lead Story</option>
-                      <option value="quick_hit">Quick Hit</option>
-                      <option value="watch_list">Watch List</option>
+                      <option value="lead_story">{sectionNames.lead}</option>
+                      <option value="quick_hit">{sectionNames.briefing}</option>
+                      <option value="watch_list">{sectionNames.watch}</option>
                     </select>
                   </div>
                 </div>
@@ -389,6 +447,30 @@ export default function EditionWorkflow() {
               </div>
             ))}
             {candidates.length === 0 && <p style={{ color: '#888', textAlign: 'center', padding: 40 }}>No candidates found.</p>}
+            {/* Prompt transparency */}
+            <div style={{ marginTop: 16, background: '#f8fafc', borderRadius: 8, overflow: 'hidden' }}>
+              <div onClick={() => loadPromptPreview('content_researcher')}
+                style={{ padding: '10px 16px', cursor: 'pointer', fontSize: 13, color: '#2563eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>🔍 View/Edit Clustering Prompt</span>
+                <span style={{ fontSize: 11, color: '#888' }}>{showPrompt === 'content_researcher' ? '▼' : '▶'}</span>
+              </div>
+              {showPrompt === 'content_researcher' && (
+                <div style={{ padding: '0 16px 12px' }}>
+                  <p style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>Edit the instructions below for a one-time override. The output format is locked to keep the pipeline working.</p>
+                  <textarea value={promptOverrides['content_researcher'] ?? promptTexts['content_researcher']?.editable ?? ''} onChange={e => setPromptOverrides(prev => ({ ...prev, content_researcher: e.target.value }))}
+                    rows={10} style={{ width: '100%', padding: 10, border: '1px solid #ddd', borderRadius: 6, fontSize: 12, fontFamily: 'monospace', lineHeight: 1.5, boxSizing: 'border-box', resize: 'vertical' }} />
+                  {promptTexts['content_researcher']?.locked && (
+                    <pre style={{ fontSize: 11, color: '#888', background: '#f0f0f5', padding: 10, borderRadius: 6, marginTop: 6, whiteSpace: 'pre-wrap', lineHeight: 1.4, border: '1px solid #e0e0e0' }}>
+                      🔒 {promptTexts['content_researcher'].locked.substring(0, 400)}{promptTexts['content_researcher'].locked.length > 400 ? '...' : ''}
+                    </pre>
+                  )}
+                  {promptOverrides['content_researcher'] && (
+                    <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4 }}>⚠️ One-time override active — this won't be saved as your default</div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
               <button onClick={confirmSelections} disabled={confirming} style={btn(confirming ? '#94a3b8' : '#0f3460', confirming)}>
                 {confirming ? '✍️ Writing stories — please wait...' : 'Confirm → Write Stories'}
@@ -430,6 +512,35 @@ export default function EditionWorkflow() {
                 </div>
               );
             })}
+            {/* Prompt transparency for writing */}
+            <div style={{ marginTop: 16, background: '#f8fafc', borderRadius: 8, overflow: 'hidden' }}>
+              {['story_writer_lead', 'story_writer_briefings', 'story_writer_watch_list'].map(stage => {
+                const labels: Record<string, string> = { story_writer_lead: 'Lead Story Writer', story_writer_briefings: 'Briefing Writer', story_writer_watch_list: 'Watch List Writer' };
+                return (
+                  <div key={stage}>
+                    <div onClick={() => loadPromptPreview(stage)}
+                      style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#2563eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+                      <span>📝 {labels[stage]} Prompt</span>
+                      <span style={{ fontSize: 11, color: '#888' }}>{showPrompt === stage ? '▼' : '▶'}</span>
+                    </div>
+                    {showPrompt === stage && (
+                      <div style={{ padding: '0 16px 12px' }}>
+                        <p style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>Edit instructions for this run only. Output format is locked.</p>
+                        <textarea value={promptOverrides[stage] ?? promptTexts[stage]?.editable ?? ''} onChange={e => setPromptOverrides(prev => ({ ...prev, [stage]: e.target.value }))}
+                          rows={8} style={{ width: '100%', padding: 10, border: '1px solid #ddd', borderRadius: 6, fontSize: 12, fontFamily: 'monospace', lineHeight: 1.5, boxSizing: 'border-box', resize: 'vertical' }} />
+                        {promptTexts[stage]?.locked && (
+                          <pre style={{ fontSize: 11, color: '#888', background: '#f0f0f5', padding: 10, borderRadius: 6, marginTop: 6, whiteSpace: 'pre-wrap', lineHeight: 1.4, border: '1px solid #e0e0e0' }}>
+                            🔒 {promptTexts[stage].locked.substring(0, 300)}{promptTexts[stage].locked.length > 300 ? '...' : ''}
+                          </pre>
+                        )}
+                        {promptOverrides[stage] && <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4 }}>⚠️ One-time override active</div>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
               <button onClick={saveEditsAndAssemble} disabled={assembling} style={btn(assembling ? '#94a3b8' : '#0f3460', assembling)}>
                 {assembling ? 'Assembling...' : 'Save & Continue → Newsletter'}
@@ -484,38 +595,43 @@ export default function EditionWorkflow() {
             {/* Images */}
             <div style={card}>
               <h3 style={{ fontSize: 15, marginBottom: 8 }}>Story Images</h3>
-              <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>Pull images from source articles. Review each one before it goes into the newsletter.</p>
-              <button onClick={fetchStoryImages} disabled={fetchingImages}
-                style={{ padding: '8px 16px', background: fetchingImages ? '#94a3b8' : '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: fetchingImages ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 500 }}>
-                {fetchingImages ? '🔍 Fetching images...' : '🖼️ Fetch Story Images'}
-              </button>
+              <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>Images are pulled from source articles automatically. Click below to pick which ones to include.</p>
+              {!showImages ? (
+                <button onClick={() => { setShowImages(true); if (!imagesFetched && !fetchingImages) fetchStoryImages(); }}
+                  style={{ padding: '8px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                  {fetchingImages ? '🔍 Fetching images...' : imagesFetched ? `🖼️ Add Images (${Object.keys(imagePreview).length} found)` : '🖼️ Add Images'}
+                </button>
+              ) : fetchingImages ? (
+                <div style={{ padding: 16, textAlign: 'center', color: '#888' }}>
+                  <div style={{ fontSize: 16, marginBottom: 8 }}>🔍</div>
+                  <p style={{ fontSize: 13 }}>Fetching images from source articles...</p>
+                </div>
+              ) : null}
 
-              {Object.keys(imagePreview).length > 0 && (
+              {showImages && imagesFetched && Object.keys(imagePreview).length > 0 && (
                 <div style={{ marginTop: 16 }}>
-                  <h4 style={{ fontSize: 13, marginBottom: 8 }}>Review Images</h4>
                   {Object.entries(imagePreview).map(([sectionId, img]) => (
-                    <div key={sectionId} style={{ display: 'flex', gap: 12, alignItems: 'start', padding: 10, background: img.approved ? '#f0fdf4' : '#fafafa', borderRadius: 8, marginBottom: 8, border: `1px solid ${img.approved ? '#bbf7d0' : '#e0e0e0'}` }}>
-                      <img src={img.url} alt={img.headline} style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{img.headline}</div>
-                        <div style={{ fontSize: 11, color: '#888', marginBottom: 6, wordBreak: 'break-all' }}>{img.url.substring(0, 80)}...</div>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => setImagePreview(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], approved: true } }))}
-                            style={{ padding: '3px 10px', background: img.approved ? '#059669' : '#e0e0e0', color: img.approved ? 'white' : '#333', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
-                            ✓ Use
-                          </button>
-                          <button onClick={() => setImagePreview(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], approved: false } }))}
-                            style={{ padding: '3px 10px', background: !img.approved ? '#dc2626' : '#e0e0e0', color: !img.approved ? 'white' : '#333', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
-                            ✗ Skip
-                          </button>
-                        </div>
+                    <div key={sectionId} style={{ padding: 12, background: img.selectedUrl ? '#f0fdf4' : '#fafafa', borderRadius: 8, marginBottom: 10, border: `1px solid ${img.selectedUrl ? '#bbf7d0' : '#e0e0e0'}` }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{img.headline}</div>
+                      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                        {img.options.map((url, i) => (
+                          <div key={i} onClick={() => setImagePreview(prev => ({
+                            ...prev, [sectionId]: { ...prev[sectionId], selectedUrl: prev[sectionId].selectedUrl === url ? '' : url }
+                          }))}
+                            style={{ cursor: 'pointer', border: `3px solid ${img.selectedUrl === url ? '#059669' : 'transparent'}`, borderRadius: 8, flexShrink: 0, position: 'relative' as const }}>
+                            <img src={url} alt={`Option ${i + 1}`} style={{ width: 140, height: 90, objectFit: 'cover', borderRadius: 6, display: 'block' }}
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                            {img.selectedUrl === url && <div style={{ position: 'absolute' as const, top: 4, right: 4, background: '#059669', color: 'white', borderRadius: 10, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>✓</div>}
+                          </div>
+                        ))}
                       </div>
+                      {img.options.length > 1 && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{img.options.length} options — click to select</div>}
+                      {img.options.length === 1 && !img.selectedUrl && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>Click image to use it</div>}
                     </div>
                   ))}
-                  <button onClick={approveImages}
-                    style={{ padding: '8px 16px', background: '#059669', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 500, marginTop: 8 }}>
-                    Apply {Object.values(imagePreview).filter(i => i.approved).length} Approved Images
+                  <button onClick={approveImages} disabled={applyingImages}
+                    style={{ padding: '8px 16px', background: applyingImages ? '#94a3b8' : '#059669', color: 'white', border: 'none', borderRadius: 6, cursor: applyingImages ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 500, marginTop: 8 }}>
+                    {applyingImages ? '⏳ Applying...' : `Apply ${Object.values(imagePreview).filter(i => i.selectedUrl).length} Image${Object.values(imagePreview).filter(i => i.selectedUrl).length !== 1 ? 's' : ''}`}
                   </button>
                 </div>
               )}
@@ -543,7 +659,17 @@ export default function EditionWorkflow() {
                 URL.revokeObjectURL(url);
               }} style={btn('#0f3460')}>📥 Download HTML</button>
               <button onClick={() => { navigator.clipboard.writeText(newsletter.html); alert('HTML copied to clipboard'); }} style={btn('#2563eb')}>📋 Copy HTML</button>
-              <button onClick={() => alert('Email delivery not configured yet — use Download or Copy for now')} style={btn('#2e7d32')}>✉️ Send Email</button>
+              <button onClick={async () => {
+                if (!confirm('Send this newsletter to all active subscribers?')) return;
+                try {
+                  const data = await api('POST', `/editions/${correlationId}/send`, { subjectLine: selectedSubject });
+                  if (data.report) {
+                    alert(`Sent to ${data.report.totalSent} subscriber(s). ${data.report.failureCount} failed.`);
+                  } else {
+                    alert('Newsletter sent.');
+                  }
+                } catch (err: any) { alert('Send failed: ' + err.message); }
+              }} style={btn('#2e7d32')}>✉️ Send Email</button>
               <button onClick={() => setPhase(2)} style={btn('#94a3b8')}>← Back to Editing</button>
               <button onClick={() => navigate('/dashboard')} style={btn('#94a3b8')}>Dashboard</button>
             </div>

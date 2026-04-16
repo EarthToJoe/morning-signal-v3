@@ -153,9 +153,9 @@ router.post('/:correlationId/reassemble', async (req: Request, res: Response) =>
     if (!leadSection) return res.status(400).json({ error: 'No lead story found' });
 
     const writtenNewsletter = {
-      leadStory: { role: 'lead_story' as const, storyCandidateId: leadSection.story_candidate_id, headline: leadSection.headline, htmlContent: leadSection.html_content, plainTextContent: leadSection.plain_text_content, wordCount: leadSection.word_count, sourceLinks: leadSection.source_links || [] },
-      quickHits: sections.filter((s: any) => s.role === 'quick_hit').map((s: any) => ({ role: 'quick_hit' as const, storyCandidateId: s.story_candidate_id, headline: s.headline, htmlContent: s.html_content, plainTextContent: s.plain_text_content, wordCount: s.word_count, sourceLinks: s.source_links || [] })),
-      watchList: sections.filter((s: any) => s.role === 'watch_list').map((s: any) => ({ role: 'watch_list' as const, storyCandidateId: s.story_candidate_id, headline: s.headline, htmlContent: s.html_content, plainTextContent: s.plain_text_content, wordCount: s.word_count, sourceLinks: s.source_links || [] })),
+      leadStory: { role: 'lead_story' as const, storyCandidateId: leadSection.story_candidate_id || leadSection.id, headline: leadSection.headline, htmlContent: leadSection.html_content, plainTextContent: leadSection.plain_text_content, wordCount: leadSection.word_count, sourceLinks: leadSection.source_links || [], imageUrl: leadSection.image_url || '' },
+      quickHits: sections.filter((s: any) => s.role === 'quick_hit').map((s: any) => ({ role: 'quick_hit' as const, storyCandidateId: s.story_candidate_id || s.id, headline: s.headline, htmlContent: s.html_content, plainTextContent: s.plain_text_content, wordCount: s.word_count, sourceLinks: s.source_links || [], imageUrl: s.image_url || '' })),
+      watchList: sections.filter((s: any) => s.role === 'watch_list').map((s: any) => ({ role: 'watch_list' as const, storyCandidateId: s.story_candidate_id || s.id, headline: s.headline, htmlContent: s.html_content, plainTextContent: s.plain_text_content, wordCount: s.word_count, sourceLinks: s.source_links || [], imageUrl: s.image_url || '' })),
       totalWordCount: 0, tokenUsage: { input: 0, output: 0 }, cost: 0,
     };
 
@@ -186,27 +186,33 @@ router.post('/:correlationId/reassemble', async (req: Request, res: Response) =>
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
-// POST /api/editions/:correlationId/fetch-images — Fetch og:images for story candidates from their source articles
+// POST /api/editions/:correlationId/fetch-images — Fetch og:images from ALL source articles per story
+// Returns multiple image options per section so the user can pick the best one. Does NOT save to DB.
 router.post('/:correlationId/fetch-images', async (req: Request, res: Response) => {
   try {
     const editionId = await getEditionId(req.params.correlationId);
     const sectionsResult = await query(
-      `SELECT ws.id, ws.story_candidate_id, ws.image_url,
-       (SELECT a.url FROM story_candidate_articles sca JOIN articles a ON sca.article_id = a.id WHERE sca.story_candidate_id = ws.story_candidate_id LIMIT 1) as source_url
-       FROM written_sections ws WHERE ws.edition_id = $1 AND (ws.image_url IS NULL OR ws.image_url = '')`, [editionId]
+      `SELECT ws.id, ws.story_candidate_id, ws.headline FROM written_sections ws WHERE ws.edition_id = $1`, [editionId]
     );
 
-    const results: { sectionId: string; imageUrl: string | null }[] = [];
+    const results: { sectionId: string; headline: string; images: string[] }[] = [];
     for (const row of sectionsResult.rows) {
-      if (!row.source_url) { results.push({ sectionId: row.id, imageUrl: null }); continue; }
-      const imageUrl = await urlFetcher.fetchImage(row.source_url);
-      if (imageUrl) {
-        await query('UPDATE written_sections SET image_url = $1 WHERE id = $2', [imageUrl, row.id]);
+      const articlesResult = await query(
+        `SELECT a.url FROM story_candidate_articles sca JOIN articles a ON sca.article_id = a.id
+         WHERE sca.story_candidate_id = $1 ORDER BY a.rank_position ASC`, [row.story_candidate_id]
+      );
+
+      const images: string[] = [];
+      for (const articleRow of articlesResult.rows) {
+        const imageUrl = await urlFetcher.fetchImage(articleRow.url);
+        if (imageUrl && !images.includes(imageUrl)) images.push(imageUrl);
       }
-      results.push({ sectionId: row.id, imageUrl });
+
+      results.push({ sectionId: row.id, headline: row.headline, images });
     }
 
-    res.json({ results, fetched: results.filter(r => r.imageUrl).length, total: results.length });
+    const totalImages = results.reduce((sum, r) => sum + r.images.length, 0);
+    res.json({ results, totalImages, totalSections: results.length });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
@@ -344,6 +350,49 @@ router.get('/profile/:profileId/list', async (req: Request, res: Response) => {
       [req.params.profileId, req.userId]
     );
     res.json({ editions: result.rows });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// POST /api/editions/:correlationId/send — send newsletter to subscribers
+router.post('/:correlationId/send', async (req: Request, res: Response) => {
+  try {
+    const editionId = await getEditionId(req.params.correlationId);
+    const newsletterResult = await query('SELECT * FROM assembled_newsletters WHERE edition_id = $1', [editionId]);
+    if (newsletterResult.rows.length === 0) return res.status(400).json({ error: 'Newsletter not yet assembled' });
+
+    const editionResult = await query(
+      'SELECT e.profile_id FROM editions e WHERE e.correlation_id = $1', [req.params.correlationId]
+    );
+    const profileId = editionResult.rows[0]?.profile_id;
+    if (!profileId) return res.status(400).json({ error: 'No profile linked to this edition' });
+
+    const { SubscriberManagerService } = await import('../services/subscriber-manager');
+    const { EmailDeliveryService } = await import('../services/email-delivery');
+    const subManager = new SubscriberManagerService();
+    const emailService = new EmailDeliveryService(subManager);
+
+    const nl = newsletterResult.rows[0];
+    const subjectLine = req.body.subjectLine || nl.selected_subject_line || 'Newsletter';
+
+    const report = await emailService.deliver(
+      { html: nl.html_content, plainText: nl.plain_text_content, editionNumber: 0, editionDate: '', sectionMetadata: [] },
+      subjectLine, req.params.correlationId, profileId
+    );
+
+    await query('UPDATE editions SET status = $1, completed_at = NOW() WHERE correlation_id = $2', ['delivered', req.params.correlationId]);
+
+    res.json({ success: true, report });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// GET /api/editions/:correlationId/delivery — get delivery report
+router.get('/:correlationId/delivery', async (req: Request, res: Response) => {
+  try {
+    const editionId = await getEditionId(req.params.correlationId);
+    const result = await query('SELECT * FROM delivery_reports WHERE edition_id = $1 ORDER BY delivered_at DESC LIMIT 1', [editionId]);
+    if (result.rows.length === 0) return res.json({ delivered: false });
+    const report = result.rows[0];
+    res.json({ delivered: true, totalSent: report.total_sent, failureCount: report.failure_count, deliveredAt: report.delivered_at });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 

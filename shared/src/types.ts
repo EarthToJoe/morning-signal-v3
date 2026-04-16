@@ -217,6 +217,7 @@ export interface PipelineRunStatus {
   completedAt?: Date;
   warnings: string[];
   costSummary?: EditionCostSummary;
+  sectionNames?: SectionNames;
 }
 
 // --- URL Fetcher ---

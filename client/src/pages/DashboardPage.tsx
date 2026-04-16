@@ -4,7 +4,7 @@ import { api } from '../api';
 
 interface Profile {
   id: string; name: string; audience: string; editionCount: number;
-  lastEditionDate: string | null; createdAt: string;
+  lastEditionDate: string | null; createdAt: string; creatorDisplayName?: string;
 }
 
 export default function DashboardPage() {
@@ -54,10 +54,6 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div style={{ background: '#0f3460', color: 'white', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600 }}>Morning Signal</h1>
-        <span style={{ fontSize: 13, opacity: 0.8 }}>AI Newsletter Platform</span>
-      </div>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 style={{ fontSize: 22 }}>Your Newsletters</h2>
@@ -83,7 +79,7 @@ export default function DashboardPage() {
                     <h3 style={{ fontSize: 17, marginBottom: 4 }}>{p.name}</h3>
                     <p style={{ fontSize: 13, color: '#888', marginBottom: 4 }}>{p.audience?.substring(0, 100)}{(p.audience?.length || 0) > 100 ? '...' : ''}</p>
                     <span style={{ fontSize: 12, color: '#aaa' }}>
-                      {p.editionCount} edition{p.editionCount !== 1 ? 's' : ''}
+                      by {p.creatorDisplayName || 'Anonymous'} · {p.editionCount} edition{p.editionCount !== 1 ? 's' : ''}
                       {p.lastEditionDate ? ` · Last: ${new Date(p.lastEditionDate).toLocaleDateString()}` : ''}
                     </span>
                   </div>

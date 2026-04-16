@@ -64,6 +64,7 @@ router.get('/', async (req: Request, res: Response) => {
     const profiles = result.rows.map((r: any) => ({
       id: r.id, name: r.name, audience: r.audience, isPreset: r.is_preset,
       sectionNames: r.section_names || DEFAULT_SECTION_NAMES,
+      creatorDisplayName: r.creator_display_name || 'Anonymous',
       editionCount: parseInt(r.edition_count), lastEditionDate: r.last_edition_date,
       createdAt: r.created_at,
     }));
@@ -79,10 +80,14 @@ router.post('/', async (req: Request, res: Response) => {
     if (!name) return res.status(400).json({ error: 'name is required' });
     if (!categories || categories.length === 0) return res.status(400).json({ error: 'At least one category required' });
 
+    // Get creator display name
+    const userProfile = await query('SELECT display_name FROM user_profiles WHERE user_id = $1', [userId]);
+    const creatorName = userProfile.rows[0]?.display_name || req.userEmail?.split('@')[0] || 'Anonymous';
+
     const profileResult = await query(
-      `INSERT INTO newsletter_profiles (user_id, name, audience, section_names, theme_settings, is_preset)
-       VALUES ($1, $2, $3, $4, $5, false) RETURNING id`,
-      [userId, name, audience || '', JSON.stringify(sectionNames || DEFAULT_SECTION_NAMES), JSON.stringify(themeSettings || {})]
+      `INSERT INTO newsletter_profiles (user_id, name, audience, section_names, theme_settings, is_preset, creator_display_name)
+       VALUES ($1, $2, $3, $4, $5, false, $6) RETURNING id`,
+      [userId, name, audience || '', JSON.stringify(sectionNames || DEFAULT_SECTION_NAMES), JSON.stringify(themeSettings || {}), creatorName]
     );
     const profileId = profileResult.rows[0].id;
 
@@ -114,6 +119,34 @@ router.get('/:id', async (req: Request, res: Response) => {
       sectionNames: p.section_names || DEFAULT_SECTION_NAMES,
       themeSettings: p.theme_settings || {}, categories, createdAt: p.created_at,
     });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// PUT /api/profiles/:id — update profile
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { name, audience, categories, sectionNames, themeSettings } = req.body;
+    const existing = await query('SELECT * FROM newsletter_profiles WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'Profile not found' });
+
+    await query(
+      `UPDATE newsletter_profiles SET name = $1, audience = $2, section_names = $3, theme_settings = $4 WHERE id = $5 AND user_id = $6`,
+      [name || existing.rows[0].name, audience ?? existing.rows[0].audience, JSON.stringify(sectionNames || existing.rows[0].section_names), JSON.stringify(themeSettings || existing.rows[0].theme_settings), req.params.id, userId]
+    );
+
+    if (categories && categories.length > 0) {
+      await query('DELETE FROM topic_config WHERE profile_id = $1', [req.params.id]);
+      for (let i = 0; i < categories.length; i++) {
+        const cat = categories[i];
+        await query(
+          `INSERT INTO topic_config (category, display_name, search_queries, objective, preferred_sources, priority, is_active, profile_id)
+           VALUES ($1, $2, $3::jsonb, $4, $5, $6, true, $7)`,
+          [cat.category || cat.displayName?.toLowerCase().replace(/[^a-z0-9]+/g, '_'), cat.displayName, JSON.stringify(cat.searchQueries || []), cat.objective || '', cat.preferredSources || '', i + 1, req.params.id]
+        );
+      }
+    }
+    res.json({ success: true, id: req.params.id });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 

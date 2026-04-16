@@ -55,6 +55,14 @@ export class ContentResearcherService {
     if (profileContext) {
       prompt = prompt.replace(/The Morning Signal/g, profileContext.newsletterName);
       prompt = prompt.replace(/defense, energy, and technology decision-makers/g, profileContext.audience || 'professionals');
+      // Inject section name awareness so GPT uses custom names for role suggestions
+      const sn = profileContext.sectionNames;
+      if (sn) {
+        prompt += `\n\nSECTION NAMES: The lead section is called "${sn.lead}", the briefing section is called "${sn.briefing}", and the watch section is called "${sn.watch}". Use "lead_story", "quick_hit", and "watch_list" as the suggestedRole values in JSON, but be aware of these custom names when assessing relevance.`;
+      }
+      if (profileContext.audience) {
+        prompt += `\nTARGET AUDIENCE: ${profileContext.audience}`;
+      }
     }
 
     // V3: truncate snippets for clustering (title + first 500 chars — full excerpts only for writing)

@@ -171,8 +171,8 @@ export class PipelineOrchestrator {
 
       const [leadResult, qhResult, wlResult] = await Promise.allSettled([
         withRetry(() => this.storyWriter.writeLeadStory(selections.leadStory, promptOverrides?.lead || null, correlationId, profileContext), 3, correlationId, 'story-writer-lead', log),
-        this.storyWriter.writeQuickHits(selections.quickHits, promptOverrides?.briefings || null, correlationId, profileContext),
-        this.storyWriter.writeWatchList(selections.watchListItems, promptOverrides?.briefings || null, correlationId, profileContext),
+        withRetry(() => this.storyWriter.writeQuickHits(selections.quickHits, promptOverrides?.briefings || null, correlationId, profileContext), 3, correlationId, 'story-writer-briefings', log),
+        withRetry(() => this.storyWriter.writeWatchList(selections.watchListItems, promptOverrides?.briefings || null, correlationId, profileContext), 3, correlationId, 'story-writer-watch', log),
       ]);
 
       if (leadResult.status === 'fulfilled') {
@@ -236,7 +236,10 @@ export class PipelineOrchestrator {
   }
 
   async getStatus(correlationId: string): Promise<PipelineRunStatus> {
-    const result = await query('SELECT * FROM editions WHERE correlation_id = $1', [correlationId]);
+    const result = await query(
+      `SELECT e.*, np.section_names FROM editions e LEFT JOIN newsletter_profiles np ON e.profile_id = np.id WHERE e.correlation_id = $1`,
+      [correlationId]
+    );
     if (result.rows.length === 0) throw new Error(`Edition not found: ${correlationId}`);
     const row = result.rows[0];
     const statusMap: Record<string, PipelineRunStatus['status']> = {
@@ -248,6 +251,7 @@ export class PipelineOrchestrator {
       correlationId, currentStage: row.status, status: statusMap[row.status] || 'running',
       startedAt: new Date(row.started_at), completedAt: row.completed_at ? new Date(row.completed_at) : undefined,
       warnings: row.warnings || [], costSummary: await this.costTracker.getEditionSummary(correlationId),
+      sectionNames: row.section_names || DEFAULT_SECTION_NAMES,
     };
   }
 

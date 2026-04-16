@@ -90,10 +90,8 @@ export default function ProfileWizard() {
 
   return (
     <div>
-      <div style={{ background: '#0f3460', color: 'white', padding: '16px 24px' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600 }}>Create Newsletter</h1>
-      </div>
       <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
+        <h2 style={{ fontSize: 22, marginBottom: 4 }}>Create Newsletter</h2>
         {/* Preset cards */}
         <p style={{ color: '#666', marginBottom: 16 }}>Pick a preset to start with, or create your own from scratch.</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 24 }}>

@@ -23,6 +23,9 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
   const authHeader = req.headers.authorization;
 
   // Dev mode fallback: if no Supabase keys configured, use a dev user
+  const isDev = config.nodeEnv === 'development';
+
+  // Dev mode fallback: no Supabase keys, or no auth header in development
   if (!config.supabaseUrl || config.supabaseUrl === '' || !config.supabaseServiceRoleKey || config.supabaseServiceRoleKey === 'REPLACE_ME') {
     req.userId = 'dev-user-id';
     req.userEmail = 'dev@localhost';
@@ -30,10 +33,22 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
   }
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // In development, allow unauthenticated requests to fall through as dev user
+    if (isDev) {
+      req.userId = 'dev-user-id';
+      req.userEmail = 'dev@localhost';
+      return next();
+    }
     return res.status(401).json({ error: 'Missing or invalid authorization header' });
   }
 
+  // Accept dev-token in development mode
   const token = authHeader.substring(7);
+  if (isDev && token === 'dev-token') {
+    req.userId = 'dev-user-id';
+    req.userEmail = 'dev@localhost';
+    return next();
+  }
 
   try {
     const { data: { user }, error } = await supabase.auth.getUser(token);

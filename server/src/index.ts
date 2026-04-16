@@ -9,6 +9,9 @@ import { pipelineRouter } from './routes/pipeline';
 import { editionsRouter } from './routes/editions';
 import { subscribersRouter } from './routes/subscribers';
 import { sourcesRouter } from './routes/sources';
+import { promptsRouter } from './routes/prompts';
+import { userRouter } from './routes/user';
+import { publicRouter } from './routes/public';
 
 const app = express();
 
@@ -20,12 +23,17 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'morning-signal-v3', timestamp: new Date().toISOString() });
 });
 
+// Public routes (no auth required)
+app.use('/api/public', publicRouter);
+
 // Protected routes
 app.use('/api/profiles', authMiddleware, profilesRouter);
 app.use('/api/pipeline', authMiddleware, pipelineRouter);
 app.use('/api/editions', authMiddleware, editionsRouter);
 app.use('/api/subscribers', authMiddleware, subscribersRouter);
 app.use('/api/sources', authMiddleware, sourcesRouter);
+app.use('/api/prompts', authMiddleware, promptsRouter);
+app.use('/api/user', authMiddleware, userRouter);
 
 // In production, serve React static files
 if (config.nodeEnv === 'production') {

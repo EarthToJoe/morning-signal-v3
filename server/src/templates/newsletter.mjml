@@ -2,16 +2,17 @@
   <mj-head>
     <mj-attributes>
       <mj-all font-family="{{fontFamily}}" />
-      <mj-text font-size="16px" line-height="1.6" color="{{textColor}}" />
-      <mj-section padding="0 20px" />
+      <mj-text font-size="16px" line-height="1.7" color="{{textColor}}" padding="0 0" />
+      <mj-section padding="0" />
+      <mj-body width="640px" />
     </mj-attributes>
     <mj-style>
       a { color: {{accentColor}}; text-decoration: underline; }
     </mj-style>
   </mj-head>
-  <mj-body background-color="{{backgroundColor}}">
+  <mj-body background-color="{{backgroundColor}}" width="640px">
     <!-- Header -->
-    <mj-section background-color="{{headerColor}}" padding="20px 30px">
+    <mj-section background-color="{{headerColor}}" padding="20px 16px">
       <mj-column>
         <mj-text color="#ffffff" font-size="28px" font-weight="bold" align="center">
           {{newsletterName}}
@@ -23,7 +24,7 @@
     </mj-section>
 
     <!-- Lead Story -->
-    <mj-section background-color="{{cardColor}}" padding="24px 30px">
+    <mj-section background-color="{{cardColor}}" padding="20px 16px">
       <mj-column>
         <mj-text font-size="12px" color="{{accentColor}}" font-weight="bold" text-transform="uppercase" letter-spacing="2px">
           {{leadSectionName}}
@@ -34,13 +35,14 @@
         <mj-text padding-top="12px">
           {{leadStoryContent}}
         </mj-text>
+        {{leadStoryImage}}
       </mj-column>
     </mj-section>
 
-    <mj-section padding="0"><mj-column><mj-divider border-color="#e0e0e0" border-width="1px" /></mj-column></mj-section>
+    <mj-section padding="0 16px"><mj-column><mj-divider border-color="#e0e0e0" border-width="1px" /></mj-column></mj-section>
 
     <!-- Briefings -->
-    <mj-section background-color="{{cardColor}}" padding="24px 30px">
+    <mj-section background-color="{{cardColor}}" padding="20px 16px">
       <mj-column>
         <mj-text font-size="12px" color="{{accentColor}}" font-weight="bold" text-transform="uppercase" letter-spacing="2px">
           {{briefingSectionName}}
@@ -49,10 +51,10 @@
       </mj-column>
     </mj-section>
 
-    <mj-section padding="0"><mj-column><mj-divider border-color="#e0e0e0" border-width="1px" /></mj-column></mj-section>
+    <mj-section padding="0 16px"><mj-column><mj-divider border-color="#e0e0e0" border-width="1px" /></mj-column></mj-section>
 
     <!-- Watch List -->
-    <mj-section background-color="{{cardColor}}" padding="24px 30px">
+    <mj-section background-color="{{cardColor}}" padding="20px 16px">
       <mj-column>
         <mj-text font-size="12px" color="{{accentColor}}" font-weight="bold" text-transform="uppercase" letter-spacing="2px">
           {{watchSectionName}}
@@ -62,7 +64,7 @@
     </mj-section>
 
     <!-- Footer -->
-    <mj-section background-color="{{footerColor}}" padding="20px 30px">
+    <mj-section background-color="{{footerColor}}" padding="16px">
       <mj-column>
         <mj-text color="#a0a0b0" font-size="12px" align="center">
           You're receiving this because you subscribed to {{newsletterName}}.

@@ -2,16 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signIn, signUp, isDevMode } from '../auth';
 
-export default function LoginPage() {
+export default function LoginPage({ onLogin }: { onLogin?: () => void } = {}) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegister, setIsRegister] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
 
   // Dev mode: skip login
   if (isDevMode) {
+    if (onLogin) onLogin();
     navigate('/dashboard');
     return null;
   }
@@ -25,9 +27,11 @@ export default function LoginPage() {
     try {
       if (isRegister) {
         await signUp(email, password);
-        setError('Check your email for a confirmation link');
+        setSuccess('Check your email for a confirmation link');
+        setError('');
       } else {
         await signIn(email, password);
+        if (onLogin) onLogin();
         navigate('/dashboard');
       }
     } catch (err: any) { setError(err.message); }
@@ -46,6 +50,7 @@ export default function LoginPage() {
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password (min 8 characters)"
             style={{ width: '100%', padding: '10px 14px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, marginBottom: 12, boxSizing: 'border-box' }} />
           {error && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+          {success && <p style={{ color: '#059669', fontSize: 13, marginBottom: 12 }}>{success}</p>}
           <button type="submit" disabled={loading}
             style={{ width: '100%', padding: '10px 14px', background: loading ? '#94a3b8' : '#0f3460', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>
             {loading ? 'Please wait...' : isRegister ? 'Create Account' : 'Sign In'}

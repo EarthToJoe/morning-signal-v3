@@ -48,14 +48,9 @@ export default function SourcesPage() {
 
   return (
     <div>
-      <div style={{ background: '#0f3460', color: 'white', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, cursor: 'pointer' }} onClick={() => navigate('/dashboard')}>Morning Signal</h1>
-        <span style={{ fontSize: 13, opacity: 0.8 }}>Source Collections — {profileName}</span>
-      </div>
       <div style={{ maxWidth: 700, margin: '0 auto', padding: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2>Source Collections</h2>
-          <button onClick={() => navigate('/dashboard')} style={btn('#94a3b8')}>← Dashboard</button>
+          <h2>Source Collections — {profileName}</h2>
         </div>
         <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
           Preferred sources are prioritized in search results. Excluded sources are blocked. These apply automatically when you run the pipeline.
